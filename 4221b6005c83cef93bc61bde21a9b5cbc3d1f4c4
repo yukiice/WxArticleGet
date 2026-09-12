@@ -1,0 +1,964 @@
+packages/email/src/index.ts
+  18b7e31bb981bbf1 1-3
+packages/wechat/src/scripts/poc.ts
+  18b7e31bb981bbf1 1-87
+apps/api/src/settings/settings.controller.ts
+  18b7e31bb981bbf1 1-21
+packages/email/src/templates.ts
+  18b7e31bb981bbf1 1-166
+apps/api/src/mail/mail.controller.ts
+  18b7e31bb981bbf1 1-52
+apps/web/src/lib/queries.ts
+  18b7e31bb981bbf1 4-10,17,24,58-69,195-222
+  86e9f208f57cfa26 25,191-194,223-231
+apps/api/package.json
+  18b7e31bb981bbf1 1-35
+apps/api/src/queue/queue.service.ts
+  18b7e31bb981bbf1 1-48
+apps/web/src/app/(shell)/admin/logs/page.tsx
+  18b7e31bb981bbf1 1-163
+apps/web/src/components/ui.tsx
+  18b7e31bb981bbf1 1-196
+packages/wechat/src/parse-article.test.ts
+  18b7e31bb981bbf1 1-118
+apps/api/src/summaries/summaries.module.ts
+  18b7e31bb981bbf1 1-11
+packages/wechat/src/providers/lookup.ts
+  18b7e31bb981bbf1 1-132
+apps/web/src/components/theme-toggle.tsx
+  18b7e31bb981bbf1 1-30
+apps/worker/src/boss/boss.service.ts
+  18b7e31bb981bbf1 1-90
+apps/api/src/auth/password.ts
+  18b7e31bb981bbf1 1-17
+packages/db/src/index.ts
+  18b7e31bb981bbf1 1-15
+apps/api/src/prisma/prisma.service.ts
+  18b7e31bb981bbf1 1-21
+apps/worker/src/services/summary.service.ts
+  18b7e31bb981bbf1 1-148
+packages/wechat/vitest.config.ts
+  18b7e31bb981bbf1 1-14
+apps/api/src/queue/queue.module.ts
+  18b7e31bb981bbf1 1-10
+apps/api/src/articles/articles.controller.ts
+  18b7e31bb981bbf1 1-36
+packages/shared/src/constants.ts
+  18b7e31bb981bbf1 1-54
+apps/api/src/health.controller.ts
+  18b7e31bb981bbf1 1-12
+apps/api/src/auth/auth.module.ts
+  18b7e31bb981bbf1 1-22
+apps/web/src/components/markdown.tsx
+  18b7e31bb981bbf1 1-14
+apps/web/src/app/(shell)/admin/page.tsx
+  86e9f208f57cfa26 4,7-9,12-16,19,113-114,117-122,126-130,132,138,322-398
+  18b7e31bb981bbf1 5-6,10-11,17-18,123-125,131,133-137,139-321
+apps/worker/src/services/catalog.service.ts
+  18b7e31bb981bbf1 1-70
+apps/web/src/app/(shell)/admin/layout.tsx
+  18b7e31bb981bbf1 1-28
+apps/api/src/accounts/accounts.service.ts
+  18b7e31bb981bbf1 1-202
+packages/db/prisma/migrations/20260101000000_init/migration.sql
+  18b7e31bb981bbf1 1-182
+apps/api/src/articles/articles.module.ts
+  18b7e31bb981bbf1 1-12
+apps/web/src/components/article-card.tsx
+  18b7e31bb981bbf1 1-47
+apps/api/src/logs/logs.module.ts
+  18b7e31bb981bbf1 1-10
+apps/api/src/prisma/prisma.module.ts
+  18b7e31bb981bbf1 1-10
+apps/api/src/common/response.interceptor.ts
+  18b7e31bb981bbf1 1-16
+apps/web/src/components/providers.tsx
+  18b7e31bb981bbf1 1-29
+apps/web/src/app/login/page.tsx
+  18b7e31bb981bbf1 1-77
+apps/web/tsconfig.json
+  18b7e31bb981bbf1 1-24
+apps/worker/src/services/localize.service.ts
+  18b7e31bb981bbf1 1-93
+apps/worker/src/settings/settings.service.ts
+  18b7e31bb981bbf1 1-25
+packages/wechat/src/errors.ts
+  18b7e31bb981bbf1 1-13
+pnpm-workspace.yaml
+  18b7e31bb981bbf1 1-9
+packages/email/package.json
+  18b7e31bb981bbf1 1-20
+packages/shared/src/types.ts
+  18b7e31bb981bbf1 1-149
+apps/api/src/logs/logs.service.ts
+  18b7e31bb981bbf1 1-45
+packages/wechat/tsconfig.json
+  18b7e31bb981bbf1 1-9
+apps/worker/src/boss/boss.provider.ts
+  18b7e31bb981bbf1 1-47
+packages/db/tsconfig.json
+  18b7e31bb981bbf1 1-9
+packages/shared/src/schemas.ts
+  86e9f208f57cfa26 10-11,37-52
+  18b7e31bb981bbf1 1-9,12-36,53-166
+apps/worker/tsconfig.json
+  18b7e31bb981bbf1 1-12
+docs/DATA_MODEL.md
+  18b7e31bb981bbf1 1-245
+packages/wechat/package.json
+  18b7e31bb981bbf1 1-25
+packages/email/src/transport.ts
+  18b7e31bb981bbf1 1-56
+packages/shared/package.json
+  18b7e31bb981bbf1 1-19
+packages/wechat/src/parse-article.ts
+  18b7e31bb981bbf1 1-138
+packages/db/prisma.config.ts
+  18b7e31bb981bbf1 1-40
+package.json
+  18b7e31bb981bbf1 1-24
+apps/worker/src/services/digest.service.ts
+  18b7e31bb981bbf1 1-125
+packages/db/package.json
+  18b7e31bb981bbf1 1-23
+apps/web/next-env.d.ts
+  18b7e31bb981bbf1 1-6
+apps/web/next.config.ts
+  18b7e31bb981bbf1 1-15
+apps/web/src/app/icon.svg
+  18b7e31bb981bbf1 1-5
+apps/worker/src/settings/settings.module.ts
+  18b7e31bb981bbf1 1-10
+apps/api/src/auth/jwt-auth.guard.ts
+  18b7e31bb981bbf1 1-36
+apps/api/src/common/zod.ts
+  18b7e31bb981bbf1 1-12
+apps/api/src/common/all-exceptions.filter.ts
+  18b7e31bb981bbf1 1-32
+apps/api/src/main.ts
+  18b7e31bb981bbf1 1-34
+apps/web/src/app/manifest.ts
+  18b7e31bb981bbf1 1-15
+apps/web/src/app/(shell)/daily/page.tsx
+  18b7e31bb981bbf1 1-119
+packages/wechat/src/url-utils.ts
+  18b7e31bb981bbf1 1-63
+packages/wechat/src/sanitize.ts
+  18b7e31bb981bbf1 1-191
+apps/web/src/app/(shell)/admin/settings/page.tsx
+  18b7e31bb981bbf1 1-342
+apps/api/src/accounts/accounts.controller.ts
+  18b7e31bb981bbf1 1-60
+apps/worker/src/app.module.ts
+  18b7e31bb981bbf1 1-37
+apps/worker/package.json
+  18b7e31bb981bbf1 1-31
+apps/web/src/components/nav-shell.tsx
+  18b7e31bb981bbf1 1-149
+apps/worker/src/main.ts
+  18b7e31bb981bbf1 1-24
+apps/worker/src/services/ingest.service.ts
+  18b7e31bb981bbf1 1-321
+docker-compose.yml
+  18b7e31bb981bbf1 1-75
+apps/api/src/stats/stats.module.ts
+  18b7e31bb981bbf1 1-9
+packages/db/prisma/migrations/migration_lock.toml
+  18b7e31bb981bbf1 1-3
+apps/api/src/accounts/accounts.module.ts
+  18b7e31bb981bbf1 1-11
+apps/web/src/app/(shell)/layout.tsx
+  18b7e31bb981bbf1 1-8
+packages/wechat/src/providers/types.ts
+  18b7e31bb981bbf1 1-32
+apps/api/src/mail/mail.service.ts
+  18b7e31bb981bbf1 1-138
+packages/wechat/src/index.ts
+  18b7e31bb981bbf1 1-7
+.env.example
+  18b7e31bb981bbf1 1-42
+apps/api/src/summaries/summaries.controller.ts
+  18b7e31bb981bbf1 1-31
+turbo.json
+  18b7e31bb981bbf1 1-21
+packages/email/tsconfig.json
+  18b7e31bb981bbf1 1-9
+apps/api/src/auth/current-user.decorator.ts
+  86e9f208f57cfa26 1-9
+packages/wechat/src/providers/rss.ts
+  18b7e31bb981bbf1 1-154
+packages/db/prisma/schema.prisma
+  18b7e31bb981bbf1 1-164
+Dockerfile
+  18b7e31bb981bbf1 1-27
+apps/web/src/lib/api.ts
+  18b7e31bb981bbf1 7,16-17,77-78,80,83-86,100-101
+  86e9f208f57cfa26 81-82
+apps/api/src/stats/stats.service.ts
+  18b7e31bb981bbf1 1-36
+apps/api/tsconfig.json
+  18b7e31bb981bbf1 1-12
+apps/web/postcss.config.mjs
+  18b7e31bb981bbf1 1-6
+packages/db/prisma/migrations/20260913011000_feed_catalog/migration.sql
+  18b7e31bb981bbf1 1-21
+apps/api/src/mail/mail.module.ts
+  18b7e31bb981bbf1 1-11
+docs/REVIEW.md
+  18b7e31bb981bbf1 1-100
+packages/shared/src/date.ts
+  18b7e31bb981bbf1 1-56
+apps/worker/src/prisma/prisma.module.ts
+  18b7e31bb981bbf1 1-10
+apps/api/src/auth/auth.controller.ts
+  18b7e31bb981bbf1 1,3-10,12,32,34,44,54-85
+  86e9f208f57cfa26 14,87-92
+packages/shared/src/settings-resolve.ts
+  18b7e31bb981bbf1 1-106
+apps/web/src/app/articles/[id]/page.tsx
+  18b7e31bb981bbf1 1-101
+apps/api/src/auth/public.decorator.ts
+  18b7e31bb981bbf1 1-5
+apps/api/src/app.module.ts
+  18b7e31bb981bbf1 1-38
+apps/worker/src/boss/job-runner.service.ts
+  18b7e31bb981bbf1 1-88
+apps/web/src/app/layout.tsx
+  18b7e31bb981bbf1 1-30
+packages/db/prisma/migrations/20260913020000_user_role/migration.sql
+  18b7e31bb981bbf1 1-2
+apps/worker/src/prisma/prisma.service.ts
+  18b7e31bb981bbf1 1-21
+tsconfig.base.json
+  18b7e31bb981bbf1 1-21
+apps/web/src/app/(shell)/admin/accounts/page.tsx
+  18b7e31bb981bbf1 1-423
+apps/api/src/stats/stats.controller.ts
+  18b7e31bb981bbf1 1-16
+README.md
+  18b7e31bb981bbf1 1-117
+packages/email/src/markdown.ts
+  18b7e31bb981bbf1 1-69
+apps/api/src/auth/admin.guard.ts
+  18b7e31bb981bbf1 1-22
+apps/web/src/app/(shell)/page.tsx
+  18b7e31bb981bbf1 1-181
+packages/wechat/src/catalog.ts
+  18b7e31bb981bbf1 1-190
+packages/wechat/src/http.ts
+  18b7e31bb981bbf1 1-98
+apps/web/src/lib/utils.ts
+  18b7e31bb981bbf1 1-54
+apps/web/tsconfig.tsbuildinfo
+  18b7e31bb981bbf1 1
+docker-compose.override.yml
+  18b7e31bb981bbf1 1-6
+apps/api/src/articles/articles.service.ts
+  18b7e31bb981bbf1 1-129
+.gitignore
+  18b7e31bb981bbf1 1-12
+apps/api/src/settings/settings.module.ts
+  18b7e31bb981bbf1 1-12
+apps/web/package.json
+  18b7e31bb981bbf1 1-30
+apps/web/src/components/icons.tsx
+  18b7e31bb981bbf1 1-129
+packages/shared/src/index.ts
+  18b7e31bb981bbf1 1-5
+apps/api/src/settings/settings.service.ts
+  18b7e31bb981bbf1 1-125
+packages/shared/tsconfig.json
+  18b7e31bb981bbf1 1-9
+apps/web/src/app/(shell)/accounts/page.tsx
+  18b7e31bb981bbf1 1-82
+docs/TECH_DESIGN.md
+  18b7e31bb981bbf1 1-155
+apps/api/src/logs/logs.controller.ts
+  18b7e31bb981bbf1 1-16
+apps/web/src/middleware.ts
+  18b7e31bb981bbf1 1-24
+apps/worker/src/services/notify.service.ts
+  18b7e31bb981bbf1 1-47
+apps/web/src/app/globals.css
+  18b7e31bb981bbf1 1-153
+apps/api/src/summaries/summaries.service.ts
+  18b7e31bb981bbf1 1-62
+apps/api/src/auth/auth.service.ts
+  86e9f208f57cfa26 141-156
+  18b7e31bb981bbf1 1-8,11-12,40-46,52-54,56-120,123,132
+packages/wechat/src/catalog.test.ts
+  18b7e31bb981bbf1 1-59
+packages/wechat/src/providers/index.ts
+  18b7e31bb981bbf1 1-36
+.dockerignore
+  18b7e31bb981bbf1 1-10
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.2.8-ntes.9",
+  "base_commit_sha": "4221b6005c83cef93bc61bde21a9b5cbc3d1f4c4",
+  "prompts": {
+    "18b7e31bb981bbf1": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a08f92-c0f1-7032-a1e1-1ac9c0848c32",
+        "model": "deepseek-v4.1-flash"
+      },
+      "human_author": "wb.lijin06",
+      "messages": [],
+      "total_additions": 9195,
+      "total_deletions": 292,
+      "accepted_lines": 9056,
+      "overriden_lines": 0,
+      "per_file_stats": {
+        "apps/api/src/mail/mail.service.ts": {
+          "additions": 138,
+          "accepted_lines": 138
+        },
+        "apps/api/src/summaries/summaries.service.ts": {
+          "additions": 62,
+          "accepted_lines": 62
+        },
+        ".gitignore": {
+          "additions": 12,
+          "accepted_lines": 12
+        },
+        "apps/api/src/logs/logs.controller.ts": {
+          "additions": 16,
+          "accepted_lines": 16
+        },
+        "apps/worker/src/services/digest.service.ts": {
+          "additions": 125,
+          "accepted_lines": 125
+        },
+        "apps/web/src/components/icons.tsx": {
+          "additions": 129,
+          "accepted_lines": 129
+        },
+        "apps/api/src/main.ts": {
+          "additions": 34,
+          "accepted_lines": 34
+        },
+        "packages/wechat/src/providers/index.ts": {
+          "additions": 36,
+          "accepted_lines": 36
+        },
+        "apps/web/src/lib/api.ts": {
+          "additions": 12,
+          "deletions": 5,
+          "accepted_lines": 12
+        },
+        "apps/web/src/app/(shell)/admin/settings/page.tsx": {
+          "additions": 342,
+          "accepted_lines": 342
+        },
+        "packages/db/src/index.ts": {
+          "additions": 15,
+          "accepted_lines": 15
+        },
+        "apps/worker/src/settings/settings.module.ts": {
+          "additions": 10,
+          "accepted_lines": 10
+        },
+        "packages/wechat/src/errors.ts": {
+          "additions": 13,
+          "accepted_lines": 13
+        },
+        "apps/web/tsconfig.json": {
+          "additions": 24,
+          "accepted_lines": 24
+        },
+        "apps/worker/src/prisma/prisma.service.ts": {
+          "additions": 21,
+          "accepted_lines": 21
+        },
+        "apps/api/tsconfig.json": {
+          "additions": 12,
+          "accepted_lines": 12
+        },
+        "docs/TECH_DESIGN.md": {
+          "additions": 155,
+          "accepted_lines": 155
+        },
+        "apps/api/src/logs/logs.service.ts": {
+          "additions": 45,
+          "accepted_lines": 45
+        },
+        "packages/wechat/src/http.ts": {
+          "additions": 98,
+          "accepted_lines": 98
+        },
+        "packages/email/package.json": {
+          "additions": 20,
+          "accepted_lines": 20
+        },
+        "packages/shared/src/index.ts": {
+          "additions": 5,
+          "accepted_lines": 5
+        },
+        "apps/api/src/accounts/accounts.service.ts": {
+          "additions": 208,
+          "deletions": 6,
+          "accepted_lines": 202
+        },
+        "docker-compose.yml": {
+          "additions": 75,
+          "accepted_lines": 75
+        },
+        "docs/REVIEW.md": {
+          "additions": 100,
+          "accepted_lines": 100
+        },
+        ".env.example": {
+          "additions": 43,
+          "deletions": 1,
+          "accepted_lines": 42
+        },
+        "packages/db/prisma/migrations/20260913011000_feed_catalog/migration.sql": {
+          "additions": 21,
+          "accepted_lines": 21
+        },
+        "apps/api/src/stats/stats.service.ts": {
+          "additions": 36,
+          "accepted_lines": 36
+        },
+        "apps/web/src/app/(shell)/admin/logs/page.tsx": {
+          "additions": 163,
+          "accepted_lines": 163
+        },
+        "apps/worker/package.json": {
+          "additions": 31,
+          "accepted_lines": 31
+        },
+        "apps/web/src/components/theme-toggle.tsx": {
+          "additions": 30,
+          "accepted_lines": 30
+        },
+        "apps/worker/src/app.module.ts": {
+          "additions": 37,
+          "accepted_lines": 37
+        },
+        "apps/api/src/auth/public.decorator.ts": {
+          "additions": 5,
+          "accepted_lines": 5
+        },
+        "apps/api/src/settings/settings.controller.ts": {
+          "additions": 21,
+          "accepted_lines": 21
+        },
+        "apps/worker/src/services/ingest.service.ts": {
+          "additions": 351,
+          "deletions": 30,
+          "accepted_lines": 321
+        },
+        "apps/web/src/components/ui.tsx": {
+          "additions": 196,
+          "accepted_lines": 196
+        },
+        "apps/web/src/app/(shell)/admin/layout.tsx": {
+          "additions": 28,
+          "accepted_lines": 28
+        },
+        "turbo.json": {
+          "additions": 21,
+          "accepted_lines": 21
+        },
+        "docker-compose.override.yml": {
+          "additions": 6,
+          "accepted_lines": 6
+        },
+        "packages/db/prisma/migrations/migration_lock.toml": {
+          "additions": 3,
+          "accepted_lines": 3
+        },
+        "packages/wechat/package.json": {
+          "additions": 25,
+          "accepted_lines": 25
+        },
+        "apps/web/src/components/nav-shell.tsx": {
+          "additions": 149,
+          "accepted_lines": 149
+        },
+        "apps/web/src/app/(shell)/daily/page.tsx": {
+          "additions": 119,
+          "accepted_lines": 119
+        },
+        "packages/shared/src/constants.ts": {
+          "additions": 54,
+          "accepted_lines": 54
+        },
+        "apps/worker/src/services/catalog.service.ts": {
+          "additions": 70,
+          "accepted_lines": 70
+        },
+        "apps/worker/src/services/localize.service.ts": {
+          "additions": 93,
+          "accepted_lines": 93
+        },
+        "tsconfig.base.json": {
+          "additions": 21,
+          "accepted_lines": 21
+        },
+        "packages/db/prisma/migrations/20260913020000_user_role/migration.sql": {
+          "additions": 2,
+          "accepted_lines": 2
+        },
+        "packages/shared/package.json": {
+          "additions": 19,
+          "accepted_lines": 19
+        },
+        "apps/api/src/auth/jwt-auth.guard.ts": {
+          "additions": 36,
+          "accepted_lines": 36
+        },
+        "packages/wechat/src/index.ts": {
+          "additions": 7,
+          "accepted_lines": 7
+        },
+        "packages/shared/src/schemas.ts": {
+          "additions": 151,
+          "deletions": 22,
+          "accepted_lines": 148
+        },
+        "packages/wechat/src/url-utils.ts": {
+          "additions": 63,
+          "accepted_lines": 63
+        },
+        "apps/worker/src/main.ts": {
+          "additions": 24,
+          "accepted_lines": 24
+        },
+        "apps/web/src/app/(shell)/admin/page.tsx": {
+          "additions": 202,
+          "deletions": 74,
+          "accepted_lines": 198
+        },
+        "apps/web/src/lib/queries.ts": {
+          "additions": 50,
+          "deletions": 15,
+          "accepted_lines": 49
+        },
+        "apps/web/src/app/layout.tsx": {
+          "additions": 30,
+          "accepted_lines": 30
+        },
+        "packages/wechat/vitest.config.ts": {
+          "additions": 14,
+          "accepted_lines": 14
+        },
+        "packages/db/prisma/migrations/20260101000000_init/migration.sql": {
+          "additions": 182,
+          "accepted_lines": 182
+        },
+        "apps/worker/src/boss/job-runner.service.ts": {
+          "additions": 88,
+          "accepted_lines": 88
+        },
+        "packages/wechat/src/providers/types.ts": {
+          "additions": 32,
+          "accepted_lines": 32
+        },
+        "apps/web/src/components/article-card.tsx": {
+          "additions": 47,
+          "accepted_lines": 47
+        },
+        "apps/api/src/summaries/summaries.module.ts": {
+          "additions": 11,
+          "accepted_lines": 11
+        },
+        "apps/api/src/app.module.ts": {
+          "additions": 38,
+          "accepted_lines": 38
+        },
+        "apps/api/src/articles/articles.controller.ts": {
+          "additions": 36,
+          "accepted_lines": 36
+        },
+        "package.json": {
+          "additions": 24,
+          "accepted_lines": 24
+        },
+        "apps/web/src/components/markdown.tsx": {
+          "additions": 14,
+          "accepted_lines": 14
+        },
+        "packages/wechat/src/providers/lookup.ts": {
+          "additions": 134,
+          "deletions": 2,
+          "accepted_lines": 132
+        },
+        "apps/web/src/app/(shell)/layout.tsx": {
+          "additions": 8,
+          "accepted_lines": 8
+        },
+        "packages/shared/tsconfig.json": {
+          "additions": 9,
+          "accepted_lines": 9
+        },
+        "apps/web/postcss.config.mjs": {
+          "additions": 6,
+          "accepted_lines": 6
+        },
+        "apps/web/src/app/(shell)/page.tsx": {
+          "additions": 181,
+          "accepted_lines": 181
+        },
+        "apps/api/src/logs/logs.module.ts": {
+          "additions": 10,
+          "accepted_lines": 10
+        },
+        "apps/web/src/app/(shell)/admin/accounts/page.tsx": {
+          "additions": 428,
+          "deletions": 5,
+          "accepted_lines": 423
+        },
+        "packages/wechat/src/parse-article.ts": {
+          "additions": 144,
+          "deletions": 6,
+          "accepted_lines": 138
+        },
+        "apps/api/src/settings/settings.module.ts": {
+          "additions": 12,
+          "accepted_lines": 12
+        },
+        "packages/db/prisma.config.ts": {
+          "additions": 53,
+          "deletions": 13,
+          "accepted_lines": 40
+        },
+        "apps/api/src/common/response.interceptor.ts": {
+          "additions": 16,
+          "accepted_lines": 16
+        },
+        "packages/email/src/markdown.ts": {
+          "additions": 69,
+          "accepted_lines": 69
+        },
+        "apps/api/src/prisma/prisma.module.ts": {
+          "additions": 10,
+          "accepted_lines": 10
+        },
+        "apps/worker/tsconfig.json": {
+          "additions": 12,
+          "accepted_lines": 12
+        },
+        "apps/api/src/queue/queue.module.ts": {
+          "additions": 10,
+          "accepted_lines": 10
+        },
+        "packages/email/src/transport.ts": {
+          "additions": 56,
+          "accepted_lines": 56
+        },
+        "apps/web/src/app/globals.css": {
+          "additions": 153,
+          "accepted_lines": 153
+        },
+        "docs/DATA_MODEL.md": {
+          "additions": 251,
+          "deletions": 6,
+          "accepted_lines": 245
+        },
+        "apps/api/src/auth/admin.guard.ts": {
+          "additions": 23,
+          "deletions": 1,
+          "accepted_lines": 22
+        },
+        "apps/api/src/mail/mail.module.ts": {
+          "additions": 11,
+          "accepted_lines": 11
+        },
+        "apps/worker/src/services/notify.service.ts": {
+          "additions": 47,
+          "accepted_lines": 47
+        },
+        "apps/api/src/common/zod.ts": {
+          "additions": 12,
+          "accepted_lines": 12
+        },
+        "apps/api/src/accounts/accounts.module.ts": {
+          "additions": 11,
+          "accepted_lines": 11
+        },
+        "apps/web/src/app/icon.svg": {
+          "additions": 5,
+          "accepted_lines": 5
+        },
+        "packages/email/tsconfig.json": {
+          "additions": 9,
+          "accepted_lines": 9
+        },
+        "apps/web/next.config.ts": {
+          "additions": 15,
+          "accepted_lines": 15
+        },
+        "apps/api/src/stats/stats.module.ts": {
+          "additions": 9,
+          "accepted_lines": 9
+        },
+        "apps/web/src/app/login/page.tsx": {
+          "additions": 77,
+          "accepted_lines": 77
+        },
+        "packages/wechat/src/catalog.ts": {
+          "additions": 192,
+          "deletions": 2,
+          "accepted_lines": 190
+        },
+        "packages/email/src/index.ts": {
+          "additions": 3,
+          "accepted_lines": 3
+        },
+        "packages/email/src/templates.ts": {
+          "additions": 167,
+          "deletions": 1,
+          "accepted_lines": 166
+        },
+        "apps/api/src/common/all-exceptions.filter.ts": {
+          "additions": 32,
+          "accepted_lines": 32
+        },
+        "apps/worker/src/prisma/prisma.module.ts": {
+          "additions": 10,
+          "accepted_lines": 10
+        },
+        "apps/api/src/stats/stats.controller.ts": {
+          "additions": 16,
+          "accepted_lines": 16
+        },
+        "apps/web/src/app/manifest.ts": {
+          "additions": 15,
+          "accepted_lines": 15
+        },
+        "apps/worker/src/boss/boss.provider.ts": {
+          "additions": 47,
+          "accepted_lines": 47
+        },
+        "apps/web/src/app/(shell)/accounts/page.tsx": {
+          "additions": 82,
+          "accepted_lines": 82
+        },
+        "apps/worker/src/services/summary.service.ts": {
+          "additions": 148,
+          "accepted_lines": 148
+        },
+        "apps/api/src/mail/mail.controller.ts": {
+          "additions": 52,
+          "accepted_lines": 52
+        },
+        "apps/worker/src/boss/boss.service.ts": {
+          "additions": 94,
+          "deletions": 4,
+          "accepted_lines": 90
+        },
+        "apps/api/src/auth/auth.service.ts": {
+          "additions": 103,
+          "deletions": 42,
+          "accepted_lines": 87
+        },
+        "packages/shared/src/date.ts": {
+          "additions": 56,
+          "accepted_lines": 56
+        },
+        "apps/api/src/health.controller.ts": {
+          "additions": 12,
+          "accepted_lines": 12
+        },
+        "packages/db/prisma/schema.prisma": {
+          "additions": 164,
+          "accepted_lines": 164
+        },
+        "apps/api/src/queue/queue.service.ts": {
+          "additions": 48,
+          "accepted_lines": 48
+        },
+        "packages/db/tsconfig.json": {
+          "additions": 9,
+          "accepted_lines": 9
+        },
+        "apps/web/package.json": {
+          "additions": 30,
+          "accepted_lines": 30
+        },
+        "apps/api/src/auth/auth.module.ts": {
+          "additions": 22,
+          "accepted_lines": 22
+        },
+        "packages/wechat/src/sanitize.ts": {
+          "additions": 191,
+          "accepted_lines": 191
+        },
+        "packages/db/package.json": {
+          "additions": 23,
+          "accepted_lines": 23
+        },
+        "apps/api/src/auth/password.ts": {
+          "additions": 17,
+          "accepted_lines": 17
+        },
+        "apps/web/src/app/articles/[id]/page.tsx": {
+          "additions": 101,
+          "accepted_lines": 101
+        },
+        "apps/api/src/settings/settings.service.ts": {
+          "additions": 125,
+          "accepted_lines": 125
+        },
+        "apps/web/src/lib/utils.ts": {
+          "additions": 54,
+          "accepted_lines": 54
+        },
+        "Dockerfile": {
+          "additions": 27,
+          "accepted_lines": 27
+        },
+        "packages/shared/src/settings-resolve.ts": {
+          "additions": 106,
+          "accepted_lines": 106
+        },
+        "packages/wechat/src/scripts/poc.ts": {
+          "additions": 87,
+          "accepted_lines": 87
+        },
+        "apps/api/src/accounts/accounts.controller.ts": {
+          "additions": 61,
+          "deletions": 1,
+          "accepted_lines": 60
+        },
+        "packages/wechat/src/parse-article.test.ts": {
+          "additions": 119,
+          "deletions": 1,
+          "accepted_lines": 118
+        },
+        "apps/api/src/articles/articles.service.ts": {
+          "additions": 129,
+          "accepted_lines": 129
+        },
+        "apps/web/next-env.d.ts": {
+          "additions": 6,
+          "accepted_lines": 6
+        },
+        "apps/api/src/articles/articles.module.ts": {
+          "additions": 12,
+          "accepted_lines": 12
+        },
+        "packages/wechat/src/catalog.test.ts": {
+          "additions": 59,
+          "accepted_lines": 59
+        },
+        "packages/wechat/src/providers/rss.ts": {
+          "additions": 154,
+          "accepted_lines": 154
+        },
+        "apps/api/src/summaries/summaries.controller.ts": {
+          "additions": 31,
+          "accepted_lines": 31
+        },
+        "pnpm-workspace.yaml": {
+          "additions": 20,
+          "deletions": 11,
+          "accepted_lines": 9
+        },
+        "apps/web/tsconfig.tsbuildinfo": {
+          "additions": 10,
+          "deletions": 9,
+          "accepted_lines": 1
+        },
+        "README.md": {
+          "additions": 128,
+          "deletions": 11,
+          "accepted_lines": 117
+        },
+        "packages/wechat/tsconfig.json": {
+          "additions": 9,
+          "accepted_lines": 9
+        },
+        "apps/web/src/components/providers.tsx": {
+          "additions": 29,
+          "accepted_lines": 29
+        },
+        "apps/worker/src/settings/settings.service.ts": {
+          "additions": 25,
+          "accepted_lines": 25
+        },
+        "packages/shared/src/types.ts": {
+          "additions": 150,
+          "deletions": 1,
+          "accepted_lines": 149
+        },
+        "apps/api/src/auth/auth.controller.ts": {
+          "additions": 49,
+          "deletions": 23,
+          "accepted_lines": 45
+        },
+        "apps/api/src/prisma/prisma.service.ts": {
+          "additions": 21,
+          "accepted_lines": 21
+        },
+        "apps/web/src/middleware.ts": {
+          "additions": 24,
+          "accepted_lines": 24
+        },
+        ".dockerignore": {
+          "additions": 10,
+          "accepted_lines": 10
+        },
+        "apps/api/package.json": {
+          "additions": 35,
+          "accepted_lines": 35
+        }
+      }
+    },
+    "86e9f208f57cfa26": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "updates",
+        "model": "unknown"
+      },
+      "human_author": "wb.lijin06",
+      "messages": [],
+      "total_additions": 305,
+      "total_deletions": 6,
+      "accepted_lines": 168,
+      "overriden_lines": 0,
+      "per_file_stats": {
+        "apps/web/src/lib/queries.ts": {
+          "additions": 26,
+          "accepted_lines": 14
+        },
+        "apps/web/tsconfig.tsbuildinfo": {
+          "additions": 1,
+          "deletions": 1
+        },
+        "apps/web/src/lib/api.ts": {
+          "additions": 6,
+          "deletions": 1,
+          "accepted_lines": 2
+        },
+        "apps/api/src/auth/auth.controller.ts": {
+          "additions": 19,
+          "deletions": 1,
+          "accepted_lines": 7
+        },
+        "packages/shared/src/schemas.ts": {
+          "additions": 37,
+          "accepted_lines": 18
+        },
+        "apps/web/src/app/(shell)/admin/page.tsx": {
+          "additions": 170,
+          "deletions": 2,
+          "accepted_lines": 102
+        },
+        "apps/api/src/auth/auth.service.ts": {
+          "additions": 37,
+          "deletions": 1,
+          "accepted_lines": 16
+        },
+        "apps/api/src/auth/current-user.decorator.ts": {
+          "additions": 9,
+          "accepted_lines": 9
+        }
+      }
+    }
+  }
+}
