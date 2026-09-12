@@ -1,0 +1,213 @@
+docker-compose.yml
+  18b7e31bb981bbf1 10-11,14-15,17-22,24-28,30,32,35-36,43,82
+apps/worker/src/queue/job-runner.service.ts
+  18b7e31bb981bbf1 1-88
+.env.example
+  18b7e31bb981bbf1 8-13
+docs/DATA_MODEL.md
+  18b7e31bb981bbf1 19,26-27,29-47,113,124
+README.md
+  18b7e31bb981bbf1 5,7,31,43-44,49,104,112
+apps/worker/src/app.module.ts
+  18b7e31bb981bbf1 3-5,25,33
+packages/queue/src/job-queue.ts
+  18b7e31bb981bbf1 1-358
+docs/REVIEW.md
+  18b7e31bb981bbf1 72-73,81
+apps/api/package.json
+  18b7e31bb981bbf1 20
+docs/TECH_DESIGN.md
+  18b7e31bb981bbf1 15-16,50-51,53,84,110-113,135-137,150-152,155,157-163
+apps/worker/src/queue/schedule.service.ts
+  18b7e31bb981bbf1 6,9,13,20,22,24,28-29,32-33,36-37,40-41,44-45,48,53-55,65,73-76,83-92
+packages/db/prisma/migrations/20260913030000_init/migration.sql
+  18b7e31bb981bbf1 2-18,21-48,51-63,66-83,86-91,93-95,98-110,113-126,129-132,134-135,138-143,145-147,149-165,167-189,192,195,198
+packages/queue/src/index.ts
+  18b7e31bb981bbf1 1-2
+docker-compose.override.yml
+  18b7e31bb981bbf1 1,4,6
+packages/queue/src/cron.ts
+  18b7e31bb981bbf1 1-6
+packages/queue/package.json
+  18b7e31bb981bbf1 1-20
+packages/db/prisma/schema.prisma
+  18b7e31bb981bbf1 1-12,14,23-28,30-34,42-43,45-46,48-57,61-62,72-83,88,90-94,98-100,107-109,111,117,119-124,131-133,135,137-139,147,149,155-159,165-174,179-205
+packages/queue/tsconfig.json
+  18b7e31bb981bbf1 1-8
+apps/api/src/accounts/accounts.service.ts
+  18b7e31bb981bbf1 51-52
+apps/api/src/articles/articles.service.ts
+  18b7e31bb981bbf1 40-42,100
+apps/api/src/queue/queue.service.ts
+  18b7e31bb981bbf1 1,3-10,12,14-24,30,32
+apps/worker/src/queue/queue.provider.ts
+  18b7e31bb981bbf1 1,3-5,7,9,11-23,26-27,30-35,38-39
+apps/worker/src/services/ingest.service.ts
+  18b7e31bb981bbf1 11,213-214
+packages/db/prisma/migrations/migration_lock.toml
+  18b7e31bb981bbf1 3
+apps/worker/package.json
+  18b7e31bb981bbf1 18
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.2.8-ntes.9",
+  "base_commit_sha": "49f4390df24d7630f821f2fecb71203667b44d0d",
+  "prompts": {
+    "18b7e31bb981bbf1": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a08f92-c0f1-7032-a1e1-1ac9c0848c32",
+        "model": "deepseek-v4.1-flash"
+      },
+      "human_author": "yukiice",
+      "messages": [],
+      "total_additions": 1403,
+      "total_deletions": 763,
+      "accepted_lines": 1151,
+      "overriden_lines": 0,
+      "per_file_stats": {
+        "apps/worker/src/queue/job-runner.service.ts": {
+          "additions": 92,
+          "deletions": 4,
+          "accepted_lines": 88
+        },
+        "apps/worker/src/queue/schedule.service.ts": {
+          "additions": 92,
+          "accepted_lines": 92
+        },
+        "packages/db/scripts/import-pg-export.mjs": {
+          "additions": 187
+        },
+        "packages/db/prisma/schema.prisma": {
+          "additions": 205,
+          "deletions": 164,
+          "accepted_lines": 205
+        },
+        "packages/queue/package.json": {
+          "additions": 20,
+          "accepted_lines": 20
+        },
+        "apps/worker/package.json": {
+          "additions": 1,
+          "deletions": 2,
+          "accepted_lines": 1
+        },
+        "docker-compose.yml": {
+          "additions": 21,
+          "deletions": 13,
+          "accepted_lines": 21
+        },
+        "apps/api/src/queue/queue.service.ts": {
+          "additions": 24,
+          "deletions": 38,
+          "accepted_lines": 23
+        },
+        "apps/api/package.json": {
+          "additions": 1,
+          "deletions": 2,
+          "accepted_lines": 1
+        },
+        "apps/worker/src/boss/boss.provider.ts": {
+          "deletions": 47
+        },
+        "docker-compose.override.yml": {
+          "additions": 3,
+          "deletions": 3,
+          "accepted_lines": 3
+        },
+        "docs/REVIEW.md": {
+          "additions": 3,
+          "deletions": 2,
+          "accepted_lines": 3
+        },
+        "packages/queue/tsconfig.json": {
+          "additions": 8,
+          "accepted_lines": 8
+        },
+        "apps/api/src/articles/articles.service.ts": {
+          "additions": 4,
+          "deletions": 5,
+          "accepted_lines": 4
+        },
+        "docs/TECH_DESIGN.md": {
+          "additions": 25,
+          "deletions": 17,
+          "accepted_lines": 25
+        },
+        "README.md": {
+          "additions": 9,
+          "deletions": 5,
+          "accepted_lines": 9
+        },
+        "apps/worker/src/app.module.ts": {
+          "additions": 5,
+          "deletions": 5,
+          "accepted_lines": 5
+        },
+        "docs/DATA_MODEL.md": {
+          "additions": 25,
+          "deletions": 146,
+          "accepted_lines": 25
+        },
+        "apps/worker/src/boss/boss.service.ts": {
+          "deletions": 90
+        },
+        ".env.example": {
+          "additions": 6,
+          "deletions": 2,
+          "accepted_lines": 6
+        },
+        "packages/db/prisma/migrations/20260101000000_init/migration.sql": {
+          "deletions": 182
+        },
+        "packages/db/prisma/migrations/20260913020000_user_role/migration.sql": {
+          "deletions": 2
+        },
+        "packages/queue/src/cron.ts": {
+          "additions": 9,
+          "deletions": 3,
+          "accepted_lines": 6
+        },
+        "packages/db/prisma/migrations/migration_lock.toml": {
+          "additions": 1,
+          "deletions": 1,
+          "accepted_lines": 1
+        },
+        "packages/queue/src/job-queue.ts": {
+          "additions": 362,
+          "deletions": 4,
+          "accepted_lines": 358
+        },
+        "packages/db/prisma/migrations/20260913030000_init/migration.sql": {
+          "additions": 199,
+          "accepted_lines": 199
+        },
+        "packages/queue/src/index.ts": {
+          "additions": 2,
+          "accepted_lines": 2
+        },
+        "apps/worker/queue-selftest.cjs": {
+          "additions": 52
+        },
+        "apps/worker/src/services/ingest.service.ts": {
+          "additions": 3,
+          "accepted_lines": 3
+        },
+        "apps/worker/src/queue/queue.provider.ts": {
+          "additions": 42,
+          "deletions": 1,
+          "accepted_lines": 41
+        },
+        "packages/db/prisma/migrations/20260913011000_feed_catalog/migration.sql": {
+          "deletions": 21
+        },
+        "apps/api/src/accounts/accounts.service.ts": {
+          "additions": 2,
+          "deletions": 4,
+          "accepted_lines": 2
+        }
+      }
+    }
+  }
+}
