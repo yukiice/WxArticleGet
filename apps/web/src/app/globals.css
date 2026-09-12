@@ -1,0 +1,153 @@
+@import 'tailwindcss';
+
+@custom-variant dark (&:where(.dark, .dark *));
+
+@theme {
+  --color-brand-50: #eff6ff;
+  --color-brand-100: #dbeafe;
+  --color-brand-500: #3b82f6;
+  --color-brand-600: #2563eb;
+  --color-brand-700: #1d4ed8;
+}
+
+html {
+  -webkit-text-size-adjust: 100%;
+}
+
+body {
+  @apply bg-zinc-50 text-zinc-900 antialiased dark:bg-zinc-950 dark:text-zinc-100;
+}
+
+* {
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* 公众号正文排版：覆盖内联固定宽高，保证移动端不横向滚动 */
+.article-content {
+  font-size: 17px;
+  line-height: 1.85;
+  color: rgb(39 39 42);
+  word-break: break-word;
+  overflow-wrap: anywhere;
+}
+
+.dark .article-content {
+  color: rgb(212 212 216);
+}
+
+.article-content p {
+  margin: 1em 0;
+}
+
+.article-content img {
+  max-width: 100% !important;
+  height: auto !important;
+  border-radius: 8px;
+  display: block;
+  margin: 1em auto;
+}
+
+.article-content section {
+  max-width: 100% !important;
+}
+
+.article-content a {
+  color: var(--color-brand-600);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.article-content blockquote {
+  margin: 1.2em 0;
+  padding: 0.4em 1em;
+  border-left: 3px solid var(--color-brand-500);
+  background: rgb(244 244 245);
+  color: rgb(82 82 91);
+}
+
+.dark .article-content blockquote {
+  background: rgb(39 39 42);
+  color: rgb(161 161 170);
+}
+
+.article-content h1,
+.article-content h2,
+.article-content h3 {
+  font-weight: 700;
+  margin: 1.4em 0 0.6em;
+  line-height: 1.4;
+}
+
+.article-content table {
+  width: 100%;
+  display: block;
+  overflow-x: auto;
+  border-collapse: collapse;
+}
+
+.article-content td,
+.article-content th {
+  border: 1px solid rgb(228 228 231);
+  padding: 6px 10px;
+}
+
+.dark .article-content td,
+.dark .article-content th {
+  border-color: rgb(63 63 70);
+}
+
+.article-content pre {
+  background: rgb(24 24 27);
+  color: rgb(244 244 245);
+  padding: 12px 14px;
+  border-radius: 8px;
+  overflow-x: auto;
+  font-size: 13px;
+}
+
+.article-content code {
+  font-size: 0.92em;
+}
+
+/* 日报 Markdown 排版 */
+.markdown-body h1,
+.markdown-body h2,
+.markdown-body h3 {
+  font-weight: 700;
+  margin: 1.4em 0 0.6em;
+  line-height: 1.4;
+}
+
+.markdown-body h2 {
+  font-size: 1.15rem;
+}
+
+.markdown-body h3 {
+  font-size: 1.05rem;
+}
+
+.markdown-body p {
+  margin: 0.8em 0;
+  line-height: 1.85;
+}
+
+.markdown-body ul,
+.markdown-body ol {
+  padding-left: 1.4em;
+  margin: 0.8em 0;
+  list-style: disc;
+}
+
+.markdown-body ol {
+  list-style: decimal;
+}
+
+.markdown-body li {
+  margin: 0.35em 0;
+  line-height: 1.8;
+}
+
+.markdown-body a {
+  color: var(--color-brand-600);
+  text-decoration: underline;
+}

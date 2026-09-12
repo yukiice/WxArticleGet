@@ -1,0 +1,164 @@
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+model Account {
+  id            String    @id @default(cuid())
+  name          String
+  biz           String    @unique
+  avatarUrl     String?
+  intro         String?
+  providerType  String    @default("manual")
+  providerConfig Json?
+  status        String    @default("active")
+  lastFetchAt   DateTime? @db.Timestamptz(3)
+  lastSuccessAt DateTime? @db.Timestamptz(3)
+  createdAt     DateTime  @default(now()) @db.Timestamptz(3)
+  updatedAt     DateTime  @updatedAt @db.Timestamptz(3)
+  articles      Article[]
+  jobLogs       JobLog[]
+
+  @@map("accounts")
+}
+
+model Article {
+  id          String   @id @default(cuid())
+  accountId   String
+  account     Account  @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  biz         String
+  mid         String
+  idx         Int
+  title       String
+  author      String?
+  publishTime DateTime @db.Timestamptz(3)
+  url         String
+  urlHash     String   @unique
+  coverUrl    String?
+  coverLocal  String?
+  contentHtml String
+  contentText String
+  digest      String?
+  wordCount   Int      @default(0)
+  isRead      Boolean  @default(false)
+  processed   Boolean  @default(false)
+  createdAt   DateTime @default(now()) @db.Timestamptz(3)
+  updatedAt   DateTime @updatedAt @db.Timestamptz(3)
+  images      ArticleImage[]
+
+  @@unique([biz, mid, idx])
+  @@index([publishTime])
+  @@index([accountId, publishTime])
+  @@map("articles")
+}
+
+model ArticleImage {
+  id          String  @id @default(cuid())
+  articleId   String
+  article     Article @relation(fields: [articleId], references: [id], onDelete: Cascade)
+  originalUrl String
+  localPath   String
+  width       Int?
+  height      Int?
+  createdAt   DateTime @default(now()) @db.Timestamptz(3)
+
+  @@unique([articleId, originalUrl])
+  @@map("article_images")
+}
+
+model Summary {
+  id           String   @id @default(cuid())
+  date         DateTime @db.Date
+  scope        String   @default("global")
+  accountId    String?
+  model        String
+  promptVer    String
+  contentMd    String
+  articleCount Int      @default(0)
+  tokenIn      Int      @default(0)
+  tokenOut     Int      @default(0)
+  status       String   @default("done")
+  createdAt    DateTime @default(now()) @db.Timestamptz(3)
+  updatedAt    DateTime @updatedAt @db.Timestamptz(3)
+
+  @@unique([date, scope, accountId])
+  @@map("summaries")
+}
+
+model EmailRecipient {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  name      String?
+  enabled   Boolean  @default(true)
+  createdAt DateTime @default(now()) @db.Timestamptz(3)
+
+  @@map("email_recipients")
+}
+
+model SendLog {
+  id         String    @id @default(cuid())
+  date       DateTime  @db.Date
+  subject    String
+  recipients String
+  status     String
+  error      String?
+  sentAt     DateTime? @db.Timestamptz(3)
+  createdAt  DateTime  @default(now()) @db.Timestamptz(3)
+
+  @@index([date])
+  @@map("send_logs")
+}
+
+model JobLog {
+  id         String    @id @default(cuid())
+  type       String
+  accountId  String?
+  account    Account?  @relation(fields: [accountId], references: [id], onDelete: SetNull)
+  status     String
+  newCount   Int       @default(0)
+  error      String?
+  startedAt  DateTime  @db.Timestamptz(3)
+  finishedAt DateTime? @db.Timestamptz(3)
+
+  @@index([accountId, startedAt])
+  @@index([type, startedAt])
+  @@map("job_logs")
+}
+
+model Setting {
+  key       String   @id
+  value     Json
+  updatedAt DateTime @updatedAt @db.Timestamptz(3)
+
+  @@map("settings")
+}
+
+model User {
+  id           String   @id @default(cuid())
+  username     String   @unique
+  passwordHash String
+  role         String   @default("member")
+  createdAt    DateTime @default(now()) @db.Timestamptz(3)
+
+  @@map("users")
+}
+
+model FeedCatalogEntry {
+  id         String   @id @default(cuid())
+  name       String
+  feedUrl    String   @unique
+  source     String
+  biz        String?
+  avatarUrl  String?
+  intro      String?
+  lastSeenAt DateTime @default(now()) @db.Timestamptz(3)
+  createdAt  DateTime @default(now()) @db.Timestamptz(3)
+  updatedAt  DateTime @updatedAt @db.Timestamptz(3)
+
+  @@index([name])
+  @@map("feed_catalog")
+}

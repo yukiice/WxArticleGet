@@ -1,0 +1,25 @@
+{
+  "name": "@wx/wechat",
+  "version": "0.1.0",
+  "private": true,
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "dev": "tsc -w -p tsconfig.json --preserveWatchOutput",
+    "test": "vitest run",
+    "poc": "node dist/scripts/poc.js"
+  },
+  "dependencies": {
+    "@wx/shared": "workspace:*",
+    "cheerio": "^1.0.0",
+    "fast-xml-parser": "^4.5.1",
+    "sanitize-html": "^2.14.0"
+  },
+  "devDependencies": {
+    "@types/sanitize-html": "^2.13.0",
+    "typescript": "^5.6.3",
+    "vitest": "^3.0.0"
+  }
+}
