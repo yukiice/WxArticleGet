@@ -7,32 +7,40 @@ x-app: &app
     - .env
   restart: unless-stopped
   environment: &appEnv
-    # 容器内通过服务名访问 Postgres；宿主上的 .env 里是 localhost，这里必须覆盖
-    DATABASE_URL: postgresql://${POSTGRES_USER:-wx}:${POSTGRES_PASSWORD:-wx}@postgres:5432/${POSTGRES_DB:-wx_article}?schema=public
+    # 容器内通过服务名访问 MySQL；宿主上的 .env 里是 localhost，这里必须覆盖
+    DATABASE_URL: mysql://${MYSQL_USER:-wx}:${MYSQL_PASSWORD:-wx}@mysql:3306/${MYSQL_DATABASE:-wx_article}
 
 services:
-  postgres:
-    image: postgres:16-alpine
+  mysql:
+    image: mysql:8.4
     restart: unless-stopped
+    # Prisma 读写 MySQL 的 DATETIME 时一律按 UTC 处理，数据库也必须是 UTC，
+    # 否则 DEFAULT CURRENT_TIMESTAMP 会写成东八区时间，和 Prisma 写入的时间差 8 小时。
+    command:
+      - --default-time-zone=+00:00
+      - --character-set-server=utf8mb4
+      - --collation-server=utf8mb4_unicode_ci
     environment:
-      POSTGRES_USER: ${POSTGRES_USER:-wx}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-wx}
-      POSTGRES_DB: ${POSTGRES_DB:-wx_article}
-      TZ: Asia/Shanghai
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-wx-root}
+      MYSQL_DATABASE: ${MYSQL_DATABASE:-wx_article}
+      MYSQL_USER: ${MYSQL_USER:-wx}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD:-wx}
+      TZ: UTC
     volumes:
-      - pgdata:/var/lib/postgresql/data
+      - mysqldata:/var/lib/mysql
     healthcheck:
-      test: ['CMD-SHELL', 'pg_isready -U ${POSTGRES_USER:-wx} -d ${POSTGRES_DB:-wx_article}']
+      test: ['CMD-SHELL', 'mysqladmin ping -h 127.0.0.1 -u root -p$$MYSQL_ROOT_PASSWORD --silent']
       interval: 5s
       timeout: 5s
-      retries: 10
+      retries: 20
+      start_period: 30s
 
   migrate:
     <<: *app
     restart: 'no'
     command: ['pnpm', '--filter', '@wx/db', 'migrate']
     depends_on:
-      postgres:
+      mysql:
         condition: service_healthy
 
   api:
@@ -71,5 +79,5 @@ services:
       - '3000:3000'
 
 volumes:
-  pgdata:
+  mysqldata:
   appdata:

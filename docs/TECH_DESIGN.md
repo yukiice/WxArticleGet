@@ -12,8 +12,8 @@
 | 前端数据层 | TanStack Query + react-hook-form + zod | zod schema 来自 `packages/shared` |
 | 后端 | NestJS | 模块化 + ValidationPipe + schedule |
 | ORM | Prisma | 迁移与 Prisma Studio |
-| 数据库 | PostgreSQL 16 | 统一 `timestamptz` 存 UTC |
-| 队列 | pg-boss | 复用 PG，自带 cron / 重试 / 退避 / 死信 |
+| 数据库 | MySQL 8 | `datetime(3)` 存 UTC，数据库固定 `--default-time-zone=+00:00` |
+| 队列 | 自建 `job_queue` 表（`packages/queue`） | 不引入 Redis，MySQL 环境直接可跑；支持延迟、去重、重试退避、超时回收、cron |
 | 抓取 | undici/native fetch + cheerio + sanitize-html | 解析 `#js_content`，清洗正文 |
 | AI | openai SDK -> DeepSeek | 模型 `deepseek-chat` |
 | 邮件 | nodemailer + 手写 table 布局模板 | SMTP: smtp.163.com:465（SSL，授权码） |
@@ -47,10 +47,10 @@
 
 ```
 ┌──────────────┐  HTTPS   ┌────────────────────┐  Prisma  ┌────────────┐
-│  apps/web    │ ───────> │  apps/api (NestJS) │ ───────> │ PostgreSQL │
-│ Next.js+PWA  │          │  REST + 鉴权        │          │            │
+│  apps/web    │ ───────> │  apps/api (NestJS) │  Prisma  │   MySQL    │
+│ Next.js+PWA  │          │  REST + 鉴权        │ ───────> │  job_queue │
 └──────────────┘          └─────────┬──────────┘          └─────┬──────┘
-                                    │ 入队 (pg-boss)             │ 任务表
+                                    │ 写入任务行                 │ 轮询认领
                           ┌─────────▼──────────┐                │
                           │  apps/worker       │ ◄──────────────┘
                           │  抓取 / 清洗 / 总结 / 发信 │
@@ -81,7 +81,7 @@ interface ArticleSourceProvider {
 
 - Provider 类型与参数存 `accounts.providerType` / `accounts.providerConfig`，新增数据源不改业务代码
 - 抓正文：`fetch` -> `cheerio` -> `#js_content` 正文 / `#activity-name` 标题 / `#js_name` 账号名 / `ct`、`create_time` 发布时间；图片地址从 `data-src` 取真实 URL
-- 节流：同一账号请求串行 + 随机间隔（2-5s），失败指数退避（pg-boss 重试），设置单账号每日抓取上限
+- 节流：同一账号请求串行 + 随机间隔（2-5s），失败指数退避（队列重试），设置单账号每日抓取上限
 - 首次接入默认回溯 3 天，接口支持传入 `since` 覆盖
 
 ### 4.3 内容处理
@@ -107,7 +107,10 @@ interface ArticleSourceProvider {
 
 ### 4.6 调度与任务
 
-- pg-boss 注册每日 cron：`fetch-all` -> 账号抓取 -> 单篇处理 -> 当日总结 -> 邮件发送
+- 队列就是 MySQL 的 `job_queue` 表（`packages/queue`）：API 侧只写库入队，worker 侧每 3s 轮询认领并串行执行
+- 语义对齐原 pg-boss 方案：延迟执行、`singletonKey` 去重、失败按 2^n 退避重试（默认 3 次）、`running` 超时回收（默认 30 分钟）、历史任务自动清理（默认 7 天）
+- worker 进程内注册 cron：`sync-catalog` 03:00 / `fetch-all` 07:00 / `summarize-day` 07:30 / `send-digest` 邮件发送时间；重启后按最新配置重新注册
+- 任务链路：`fetch-all` -> 账号抓取（`fetch-account`）-> 单篇处理（`process-article`）-> 当日总结 -> 邮件发送
 - 任务幂等：文章维度用 `urlHash` 作为 unique key；抓取任务可重复触发不产生脏数据
 - 后台「立即抓取 / 立即生成总结 / 立即发送邮件」复用同一套任务
 - 连续失败或当日抓取 0 篇 -> 触发告警邮件
@@ -129,7 +132,9 @@ interface ArticleSourceProvider {
 
 | 变量 | 说明 |
 | --- | --- |
-| `DATABASE_URL` | PostgreSQL 连接串 |
+| `DATABASE_URL` | MySQL 连接串，如 `mysql://wx:wx@localhost:3306/wx_article` |
+| `MYSQL_*` | 容器初始化 MySQL 用的库名 / 账号 / 密码（compose 读取） |
+| `QUEUE_POLL_MS` / `QUEUE_EXPIRE_MINUTES` / `QUEUE_RETRY_DELAY_MS` / `QUEUE_KEEP_DAYS` | 队列轮询间隔 / 超时回收 / 重试基础间隔 / 历史保留天数（均可选） |
 | `APP_BASE_URL` | 公网域名，邮件内链必需 |
 | `AUTH_SECRET` | 单用户会话签名 |
 | `DATA_DIR` | 图片与附件存储根目录 |
@@ -142,14 +147,17 @@ interface ArticleSourceProvider {
 
 ## 6. 部署（概要）
 
-- `docker-compose`：`web` + `api` + `worker` + `postgres`，反向代理与 HTTPS 由服务器侧统一处理
-- 数据备份：`pg_dump` + 图片目录同步
+- `docker-compose`：`web` + `api` + `worker` + `mysql`，反向代理与 HTTPS 由服务器侧统一处理
+- 数据备份：`mysqldump` + 图片目录同步
+- 外部 MySQL 时注意：库必须跑在 UTC（`--default-time-zone=+00:00`），并使用 `utf8mb4` 字符集
 - 时区：容器与任务统一 `Asia/Shanghai`，库内时间存 UTC
 
-## 7. PostgreSQL 相关约定
+## 7. MySQL 相关约定
 
-- 时间字段统一 `@db.Timestamptz(3)`，库内存 UTC，展示层转换
-- 正文字段直接用 `String`（映射 `text`，无长度限制）
-- 检索先行方案：`ILIKE`；后续需要更强检索再加 `pg_trgm` + GIN 索引
-- 长 URL 用 `urlHash`（sha256）建唯一索引，避免长索引与超长字符串键
-- `summaries` 全局记录 `accountId` 为 NULL，唯一约束对 NULL 不生效，写入采用「先查后改」保证幂等
+- 时间字段统一 `@db.DateTime(3)`，Prisma 按 UTC 读写，数据库也必须是 UTC（`--default-time-zone=+00:00`），展示层再转 `Asia/Shanghai`
+- 正文字段用 `@db.LongText`：MySQL 的 `TEXT` 上限 64KB，微信长文实测可超 130KB
+- 参与唯一索引的 URL 一律额外存 sha256（`urlHash` / `originalUrlHash`），原始 URL 用 `@db.Text`：InnoDB 单列索引上限 3072 字节（utf8mb4 = 768 字符）
+- 主键 / 外键统一 `@db.VarChar(32)`（cuid 25 字符），保证外键两端类型一致、索引更小
+- 检索：表排序规则 `utf8mb4_unicode_ci`，`LIKE '%kw%'` 天然大小写不敏感，不需要 PG 的 `mode: 'insensitive'`；数据量大再上 ngram 全文索引
+- `summaries` 全局记录 `accountId` 为 NULL，唯一索引不约束 NULL，写入采用「先查后改」保证幂等
+- 队列表 `job_queue` 单表扛全部任务，状态机 `pending -> running -> done/failed`，见 4.6

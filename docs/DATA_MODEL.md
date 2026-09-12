@@ -16,156 +16,35 @@
 | `settings` | 键值型系统配置（LLM、SMTP、开关） |
 | `users` | 内部登录账号（无公开注册；`role` = super 总管理员 / admin 管理员 / member 只读成员） |
 | `feed_catalog` | 免费公开 RSS 目录索引（名称 → feed 地址），支撑「输入名称添加」 |
+| `job_queue` | 任务队列（替代 pg-boss）：延迟、去重、重试、超时回收、定时调度的唯一入口 |
 
 去重与索引策略：
 
 - 文章业务去重：`(biz, mid, idx)` 复合唯一索引
 - 文章链接去重：`urlHash`（sha256 hex）唯一索引，规避超长 URL 索引
 - 常用查询：`(accountId, publishTime)`、`publishTime` 建普通索引
-- `summaries` 的全局记录 `accountId` 为 NULL，PostgreSQL 唯一约束不约束 NULL，写入统一「先查询再更新/创建」
+- `summaries` 的全局记录 `accountId` 为 NULL，MySQL 唯一索引同样不约束 NULL，写入统一「先查询再更新/创建」
+- 图片去重：`(articleId, originalUrlHash)` 唯一索引（MySQL 无法给 `TEXT` 建唯一索引）
 
-## 2. Prisma Schema 草案
+## 2. Prisma / MySQL 约定
 
-```prisma
-datasource db {
-  provider = "postgresql"
-  url      = env("DATABASE_URL")
-}
+Schema 的唯一事实来源是 `packages/db/prisma/schema.prisma`，这里只记录必须遵守的约定：
 
-generator client {
-  provider = "prisma-client-js"
-}
+| 场景 | 写法 | 原因 |
+| --- | --- | --- |
+| 主键 / 外键 | `String @db.VarChar(32)` | cuid 固定 25 字符；显式限长才能保证外键两端类型一致、索引更小 |
+| 时间 | `DateTime @db.DateTime(3)` | MySQL 没有时区类型；Prisma 读写 `DATETIME` 一律按 UTC，数据库必须跑在 UTC |
+| 日期 | `DateTime @db.Date` | 承载 `dateKey`（Asia/Shanghai 自然日） |
+| 长正文 | `@db.LongText` | `TEXT` 上限 64KB，微信长文实测超 130KB |
+| URL / 简介 / 错误信息 | `@db.Text` | 不参与索引，不设长度上限 |
+| 参与唯一索引的 URL | 额外存 sha256（`urlHash` / `originalUrlHash`） | InnoDB 单列索引上限 3072 字节（utf8mb4 = 768 字符），长 URL 会撑爆索引 |
+| JSON | `Json` | `providerConfig` / `settings.value` / `job_queue.payload` |
+| 大小写不敏感检索 | 直接 `contains` | 表排序规则 `utf8mb4_unicode_ci`，`LIKE` 天然大小写不敏感 |
 
-model Account {
-  id            String    @id @default(cuid())
-  name          String
-  biz           String    @unique
-  avatarUrl     String?
-  intro         String?
-  providerType  String    // rsshub | manual | ...
-  providerConfig Json?
-  status        String    @default("active") // active | paused | error
-  lastFetchAt   DateTime? @db.Timestamptz(3)
-  lastSuccessAt DateTime? @db.Timestamptz(3)
-  createdAt     DateTime  @default(now()) @db.Timestamptz(3)
-  updatedAt     DateTime  @updatedAt @db.Timestamptz(3)
-  articles      Article[]
+已知取舍：
 
-  @@map("accounts")
-}
-
-model Article {
-  id          String   @id @default(cuid())
-  accountId   String
-  account     Account  @relation(fields: [accountId], references: [id], onDelete: Cascade)
-  biz         String
-  mid         String
-  idx         Int
-  title       String
-  author      String?
-  publishTime DateTime @db.Timestamptz(3)
-  url         String
-  urlHash     String   @unique
-  coverUrl    String?
-  contentHtml String
-  contentText String
-  digest      String?
-  wordCount   Int      @default(0)
-  isRead      Boolean  @default(false)
-  createdAt   DateTime @default(now()) @db.Timestamptz(3)
-  images      ArticleImage[]
-
-  @@unique([biz, mid, idx])
-  @@index([publishTime])
-  @@index([accountId, publishTime])
-  @@map("articles")
-}
-
-model ArticleImage {
-  id          String  @id @default(cuid())
-  articleId   String
-  article     Article @relation(fields: [articleId], references: [id], onDelete: Cascade)
-  originalUrl String
-  localPath   String
-  width       Int?
-  height      Int?
-
-  @@unique([articleId, originalUrl])
-  @@map("article_images")
-}
-
-model Summary {
-  id        String   @id @default(cuid())
-  date      DateTime @db.Date
-  scope     String   @default("global") // global | account
-  accountId String?
-  model     String
-  promptVer String
-  contentMd String
-  tokenIn   Int      @default(0)
-  tokenOut  Int      @default(0)
-  status    String   @default("done") // pending | done | failed
-  createdAt DateTime @default(now()) @db.Timestamptz(3)
-
-  @@unique([date, scope, accountId])
-  @@map("summaries")
-}
-
-model EmailRecipient {
-  id        String   @id @default(cuid())
-  email     String   @unique
-  name      String?
-  enabled   Boolean  @default(true)
-  createdAt DateTime @default(now()) @db.Timestamptz(3)
-
-  @@map("email_recipients")
-}
-
-model SendLog {
-  id         String    @id @default(cuid())
-  date       DateTime  @db.Date
-  subject    String
-  recipients String
-  status     String    // success | failed
-  error      String?
-  sentAt     DateTime? @db.Timestamptz(3)
-  createdAt  DateTime  @default(now()) @db.Timestamptz(3)
-
-  @@index([date])
-  @@map("send_logs")
-}
-
-model JobLog {
-  id         String    @id @default(cuid())
-  type       String    // fetch | clean | summary | email
-  accountId  String?
-  status     String    // running | success | failed
-  newCount   Int       @default(0)
-  error      String?
-  startedAt  DateTime  @db.Timestamptz(3)
-  finishedAt DateTime? @db.Timestamptz(3)
-
-  @@index([accountId, startedAt])
-  @@map("job_logs")
-}
-
-model Setting {
-  key       String   @id
-  value     Json
-  updatedAt DateTime @updatedAt @db.Timestamptz(3)
-
-  @@map("settings")
-}
-
-model User {
-  id           String   @id @default(cuid())
-  username     String   @unique
-  passwordHash String
-  createdAt    DateTime @default(now()) @db.Timestamptz(3)
-
-  @@map("users")
-}
-```
+- 图片原始地址超过 512 字符的场景会被 `TEXT` 兜住，但去重依赖的是 `originalUrlHash`，不受长度影响
+- 时间一致性依赖数据库时区：自建 MySQL 若不在 UTC，`DEFAULT CURRENT_TIMESTAMP` 会与 Prisma 写入差一个时区（compose 里已固定 `--default-time-zone=+00:00`）
 
 ## 3. API 草案
 
@@ -231,7 +110,7 @@ model User {
 | PUT | `/api/settings` | 更新配置 |
 | GET | `/api/stats/overview` | 总量、今日新增、最近抓取状态 |
 
-## 4. 任务定义（pg-boss）
+## 4. 任务定义（`job_queue`）
 
 | 任务 | 触发 | 幂等依据 |
 | --- | --- | --- |
@@ -242,4 +121,4 @@ model User {
 | `send-digest` | 每日 cron / 手动 | `date` + 收件人集合 |
 | `sync-catalog` | 每日 03:00 cron / worker 启动时过期补跑 / 手动 | `source` 维度 + `lastSeenAt` |
 
-失败策略：指数退避重试（默认 3 次），超限进死信并在后台标记 failed，同时触发告警邮件。
+失败策略：指数退避重试（默认 3 次，间隔 30s 起步），超限标记 failed 并保留错误信息；`running` 超过 30 分钟未结束视为进程崩溃，自动回收重跑；`done` / `failed` 记录默认保留 7 天。

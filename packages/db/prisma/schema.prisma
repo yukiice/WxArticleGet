@@ -1,5 +1,17 @@
+// MySQL 数据模型。
+//
+// 从 PostgreSQL 迁移过来的三个注意点：
+// 1. MySQL 没有 TIMESTAMPTZ，统一用 @db.DateTime(3)。Prisma 读写 MySQL 的 DATETIME 时按 UTC 处理，
+//    因此数据库必须运行在 UTC（docker-compose 里已加 --default-time-zone=+00:00），
+//    展示时由应用层用 Intl 转成 Asia/Shanghai。
+// 2. MySQL 的 TEXT 上限 64KB，微信正文实测单篇可到 130KB+，正文类字段一律 @db.LongText。
+// 3. InnoDB 单列索引上限 3072 字节（utf8mb4 即 768 字符），凡参与唯一索引的 URL 都额外存一份
+//    sha256（urlHash / originalUrlHash），原始 URL 用 @db.Text，避免超长 URL 撑爆索引。
+//
+// 排序规则用 utf8mb4_0900_ai_ci（大小写不敏感），所以查询侧不再需要 PG 的 mode: 'insensitive'。
+
 datasource db {
-  provider = "postgresql"
+  provider = "mysql"
   url      = env("DATABASE_URL")
 }
 
@@ -8,18 +20,18 @@ generator client {
 }
 
 model Account {
-  id            String    @id @default(cuid())
-  name          String
-  biz           String    @unique
-  avatarUrl     String?
-  intro         String?
-  providerType  String    @default("manual")
+  id            String    @id @default(cuid()) @db.VarChar(32)
+  name          String    @db.VarChar(191)
+  biz           String    @unique @db.VarChar(128)
+  avatarUrl     String?   @db.Text
+  intro         String?   @db.Text
+  providerType  String    @default("manual") @db.VarChar(32)
   providerConfig Json?
-  status        String    @default("active")
-  lastFetchAt   DateTime? @db.Timestamptz(3)
-  lastSuccessAt DateTime? @db.Timestamptz(3)
-  createdAt     DateTime  @default(now()) @db.Timestamptz(3)
-  updatedAt     DateTime  @updatedAt @db.Timestamptz(3)
+  status        String    @default("active") @db.VarChar(16)
+  lastFetchAt   DateTime? @db.DateTime(3)
+  lastSuccessAt DateTime? @db.DateTime(3)
+  createdAt     DateTime  @default(now()) @db.DateTime(3)
+  updatedAt     DateTime  @updatedAt @db.DateTime(3)
   articles      Article[]
   jobLogs       JobLog[]
 
@@ -27,27 +39,27 @@ model Account {
 }
 
 model Article {
-  id          String   @id @default(cuid())
-  accountId   String
+  id          String   @id @default(cuid()) @db.VarChar(32)
+  accountId   String   @db.VarChar(32)
   account     Account  @relation(fields: [accountId], references: [id], onDelete: Cascade)
-  biz         String
-  mid         String
+  biz         String   @db.VarChar(128)
+  mid         String   @db.VarChar(64)
   idx         Int
-  title       String
-  author      String?
-  publishTime DateTime @db.Timestamptz(3)
-  url         String
-  urlHash     String   @unique
-  coverUrl    String?
-  coverLocal  String?
-  contentHtml String
-  contentText String
-  digest      String?
+  title       String   @db.VarChar(512)
+  author      String?  @db.VarChar(191)
+  publishTime DateTime @db.DateTime(3)
+  url         String   @db.Text
+  urlHash     String   @unique @db.VarChar(64)
+  coverUrl    String?  @db.Text
+  coverLocal  String?  @db.Text
+  contentHtml String   @db.LongText
+  contentText String   @db.LongText
+  digest      String?  @db.Text
   wordCount   Int      @default(0)
   isRead      Boolean  @default(false)
   processed   Boolean  @default(false)
-  createdAt   DateTime @default(now()) @db.Timestamptz(3)
-  updatedAt   DateTime @updatedAt @db.Timestamptz(3)
+  createdAt   DateTime @default(now()) @db.DateTime(3)
+  updatedAt   DateTime @updatedAt @db.DateTime(3)
   images      ArticleImage[]
 
   @@unique([biz, mid, idx])
@@ -57,72 +69,74 @@ model Article {
 }
 
 model ArticleImage {
-  id          String  @id @default(cuid())
-  articleId   String
-  article     Article @relation(fields: [articleId], references: [id], onDelete: Cascade)
-  originalUrl String
-  localPath   String
-  width       Int?
-  height      Int?
-  createdAt   DateTime @default(now()) @db.Timestamptz(3)
+  id              String   @id @default(cuid()) @db.VarChar(32)
+  articleId       String   @db.VarChar(32)
+  article         Article  @relation(fields: [articleId], references: [id], onDelete: Cascade)
+  originalUrl     String   @db.Text
+  /// originalUrl 的 sha256，用于替代 (articleId, originalUrl) 唯一键（MySQL 无法给 TEXT 建唯一索引）
+  originalUrlHash String   @db.VarChar(64)
+  localPath       String   @db.VarChar(512)
+  width           Int?
+  height          Int?
+  createdAt       DateTime @default(now()) @db.DateTime(3)
 
-  @@unique([articleId, originalUrl])
+  @@unique([articleId, originalUrlHash])
   @@map("article_images")
 }
 
 model Summary {
-  id           String   @id @default(cuid())
+  id           String   @id @default(cuid()) @db.VarChar(32)
   date         DateTime @db.Date
-  scope        String   @default("global")
-  accountId    String?
-  model        String
-  promptVer    String
-  contentMd    String
+  scope        String   @default("global") @db.VarChar(32)
+  accountId    String?  @db.VarChar(32)
+  model        String   @db.VarChar(64)
+  promptVer    String   @db.VarChar(32)
+  contentMd    String   @db.LongText
   articleCount Int      @default(0)
   tokenIn      Int      @default(0)
   tokenOut     Int      @default(0)
-  status       String   @default("done")
-  createdAt    DateTime @default(now()) @db.Timestamptz(3)
-  updatedAt    DateTime @updatedAt @db.Timestamptz(3)
+  status       String   @default("done") @db.VarChar(16)
+  createdAt    DateTime @default(now()) @db.DateTime(3)
+  updatedAt    DateTime @updatedAt @db.DateTime(3)
 
   @@unique([date, scope, accountId])
   @@map("summaries")
 }
 
 model EmailRecipient {
-  id        String   @id @default(cuid())
-  email     String   @unique
-  name      String?
+  id        String   @id @default(cuid()) @db.VarChar(32)
+  email     String   @unique @db.VarChar(191)
+  name      String?  @db.VarChar(191)
   enabled   Boolean  @default(true)
-  createdAt DateTime @default(now()) @db.Timestamptz(3)
+  createdAt DateTime @default(now()) @db.DateTime(3)
 
   @@map("email_recipients")
 }
 
 model SendLog {
-  id         String    @id @default(cuid())
+  id         String    @id @default(cuid()) @db.VarChar(32)
   date       DateTime  @db.Date
-  subject    String
-  recipients String
-  status     String
-  error      String?
-  sentAt     DateTime? @db.Timestamptz(3)
-  createdAt  DateTime  @default(now()) @db.Timestamptz(3)
+  subject    String    @db.VarChar(512)
+  recipients String    @db.Text
+  status     String    @db.VarChar(16)
+  error      String?   @db.Text
+  sentAt     DateTime? @db.DateTime(3)
+  createdAt  DateTime  @default(now()) @db.DateTime(3)
 
   @@index([date])
   @@map("send_logs")
 }
 
 model JobLog {
-  id         String    @id @default(cuid())
-  type       String
-  accountId  String?
+  id         String    @id @default(cuid()) @db.VarChar(32)
+  type       String    @db.VarChar(64)
+  accountId  String?   @db.VarChar(32)
   account    Account?  @relation(fields: [accountId], references: [id], onDelete: SetNull)
-  status     String
+  status     String    @db.VarChar(16)
   newCount   Int       @default(0)
-  error      String?
-  startedAt  DateTime  @db.Timestamptz(3)
-  finishedAt DateTime? @db.Timestamptz(3)
+  error      String?   @db.Text
+  startedAt  DateTime  @db.DateTime(3)
+  finishedAt DateTime? @db.DateTime(3)
 
   @@index([accountId, startedAt])
   @@index([type, startedAt])
@@ -130,35 +144,62 @@ model JobLog {
 }
 
 model Setting {
-  key       String   @id
+  key       String   @id @db.VarChar(64)
   value     Json
-  updatedAt DateTime @updatedAt @db.Timestamptz(3)
+  updatedAt DateTime @updatedAt @db.DateTime(3)
 
   @@map("settings")
 }
 
 model User {
-  id           String   @id @default(cuid())
-  username     String   @unique
-  passwordHash String
-  role         String   @default("member")
-  createdAt    DateTime @default(now()) @db.Timestamptz(3)
+  id           String   @id @default(cuid()) @db.VarChar(32)
+  username     String   @unique @db.VarChar(191)
+  passwordHash String   @db.VarChar(255)
+  role         String   @default("member") @db.VarChar(16)
+  createdAt    DateTime @default(now()) @db.DateTime(3)
 
   @@map("users")
 }
 
 model FeedCatalogEntry {
-  id         String   @id @default(cuid())
-  name       String
-  feedUrl    String   @unique
-  source     String
-  biz        String?
-  avatarUrl  String?
-  intro      String?
-  lastSeenAt DateTime @default(now()) @db.Timestamptz(3)
-  createdAt  DateTime @default(now()) @db.Timestamptz(3)
-  updatedAt  DateTime @updatedAt @db.Timestamptz(3)
+  id         String   @id @default(cuid()) @db.VarChar(32)
+  name       String   @db.VarChar(191)
+  feedUrl    String   @unique @db.VarChar(512)
+  source     String   @db.VarChar(32)
+  biz        String?  @db.VarChar(128)
+  avatarUrl  String?  @db.Text
+  intro      String?  @db.Text
+  lastSeenAt DateTime @default(now()) @db.DateTime(3)
+  createdAt  DateTime @default(now()) @db.DateTime(3)
+  updatedAt  DateTime @updatedAt @db.DateTime(3)
 
   @@index([name])
   @@map("feed_catalog")
+}
+
+/// 任务队列（替代 pg-boss）：API 侧只写入，worker 侧轮询消费。
+/// MySQL 里没有现成的 Node 任务队列，用一张表 + 轮询实现，语义对齐原来用到的
+/// pg-boss 能力：延迟执行、失败重试（指数退避）、singletonKey 去重、超时回收。
+model JobQueue {
+  id           String    @id @default(cuid()) @db.VarChar(32)
+  name         String    @db.VarChar(64)
+  payload      Json?
+  /// pending | running | done | failed
+  status       String    @default("pending") @db.VarChar(16)
+  priority     Int       @default(0)
+  runAt        DateTime  @db.DateTime(3)
+  singletonKey String?   @db.VarChar(128)
+  attempts     Int       @default(0)
+  maxAttempts  Int       @default(3)
+  startedAt    DateTime? @db.DateTime(3)
+  finishedAt   DateTime? @db.DateTime(3)
+  lastError    String?   @db.Text
+  createdAt    DateTime  @default(now()) @db.DateTime(3)
+  updatedAt    DateTime  @updatedAt @db.DateTime(3)
+
+  @@index([status, runAt])
+  @@index([name, status])
+  @@index([singletonKey, status])
+  @@index([createdAt])
+  @@map("job_queue")
 }

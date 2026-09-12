@@ -37,10 +37,9 @@ export class ArticlesService {
     if (query.accountId) where.accountId = query.accountId;
     if (query.isRead) where.isRead = query.isRead === 'true';
     if (query.q) {
-      where.OR = [
-        { title: { contains: query.q, mode: 'insensitive' } },
-        { contentText: { contains: query.q, mode: 'insensitive' } },
-      ];
+      // MySQL 默认排序规则（utf8mb4_unicode_ci / utf8mb4_0900_ai_ci）本就大小写不敏感，
+      // 不需要 PG 的 mode: 'insensitive'
+      where.OR = [{ title: { contains: query.q } }, { contentText: { contains: query.q } }];
     }
 
     const [total, items] = await Promise.all([
@@ -98,7 +97,7 @@ export class ArticlesService {
     await this.queue.enqueue(
       'fetch-account',
       { accountId, urls: [input.url], manual: true },
-      { singletonKey: `import-${hashUrl(input.url)}`, retryLimit: 2 },
+      { singletonKey: `import-${hashUrl(input.url)}`, maxAttempts: 2 },
     );
 
     return { accountId, queued: true };

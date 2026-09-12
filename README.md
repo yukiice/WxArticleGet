@@ -2,7 +2,9 @@
 
 抓取指定微信公众号每天发布的文章，清洗排版后在网页端阅读，生成每日 AI 总结，并按设定时间把「摘要 + 链接」发送到邮箱。
 
-技术栈：Node 24 · TypeScript monorepo（pnpm + Turborepo）· Next.js 15 · NestJS · Prisma · PostgreSQL · pg-boss · DeepSeek · nodemailer（163 SMTP）
+技术栈：Node 24 · TypeScript monorepo（pnpm + Turborepo）· Next.js 15 · NestJS · Prisma · MySQL 8 · DeepSeek · nodemailer（163 SMTP）
+
+任务队列用 MySQL 的 `job_queue` 表自建（`packages/queue`），不额外引入 Redis，方便在只允许 MySQL 的环境里部署。
 
 ## 目录结构
 
@@ -26,7 +28,7 @@ cp .env.example .env
 # 至少先改 AUTH_SECRET、ADMIN_PASSWORD；DEEPSEEK_API_KEY / SMTP_* 可以后补
 ```
 
-### 方式一：全部跑在 Docker 里（推荐，无需本地装 Node / PostgreSQL）
+### 方式一：全部跑在 Docker 里（推荐，无需本地装 Node / MySQL）
 
 ```bash
 docker compose up -d --build     # 首次构建镜像需要几分钟
@@ -38,12 +40,13 @@ docker compose logs -f api       # 观察启动日志
 
 - 改完代码后：`docker compose up -d --build`
 - 只看某个服务日志：`docker compose logs -f worker`
-- Postgres 通过 `docker-compose.override.yml` 暴露在 `127.0.0.1:5432`，方便用本机客户端直连；生产部署不想暴露端口时用 `docker compose -f docker-compose.yml up -d` 忽略该文件。
+- MySQL 通过 `docker-compose.override.yml` 暴露在 `127.0.0.1:3306`，方便用本机客户端直连；生产部署不想暴露端口时用 `docker compose -f docker-compose.yml up -d` 忽略该文件。
+- MySQL 容器固定跑在 UTC（`--default-time-zone=+00:00`）：Prisma 读写 `DATETIME` 一律按 UTC 处理，数据库时区不是 UTC 会导致时间差 8 小时。
 
 ### 方式二：基础设施在 Docker，应用跑在宿主机（改代码热更新更快）
 
 ```bash
-docker compose up -d postgres    # 只起数据库
+docker compose up -d mysql       # 只起数据库
 pnpm install
 pnpm db:generate
 pnpm db:migrate
@@ -98,6 +101,7 @@ pnpm poc:article "粘贴一篇公众号文章链接" --download-images
 | --- | --- | --- |
 | 抓取文章 | `FETCH_CRON` | 每天 07:00 |
 | 生成 AI 总结 | `SUMMARY_CRON` | 每天 07:30 |
+| 同步 RSS 目录 | `CATALOG_CRON` | 每天 03:00 |
 | 发送日报邮件 | 管理后台「发送时间」 | 08:00 |
 
 修改「发送时间」后需要重启 worker 才会重新注册计划：`docker compose restart worker`。
@@ -105,7 +109,7 @@ pnpm poc:article "粘贴一篇公众号文章链接" --download-images
 ## 运维提示
 
 - 图片本地化失败时会保留原始地址，日志中可见；重新执行 `process-article` 任务可重试。
-- 数据库备份：`docker compose exec postgres pg_dump -U wx wx_article | gzip > backup.sql.gz`
+- 数据库备份：`docker compose exec mysql mysqldump -uwx -pwx --single-transaction --default-character-set=utf8mb4 wx_article | gzip > backup.sql.gz`
 - 图片文件位于 `appdata` 卷，需一并备份。
 
 ## 质量检查

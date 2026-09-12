@@ -8,6 +8,7 @@ import {
   extractImages,
   fetchArticle,
   fetchArticlesForAccount,
+  hashString,
   hashUrl,
   htmlToPlainText,
   isWechatArticleUrl,
@@ -209,6 +210,8 @@ export class IngestService {
         data: localized.files.map((file) => ({
           articleId,
           originalUrl: file.originalUrl,
+          // MySQL 无法给 TEXT 建唯一索引，去重用 sha256
+          originalUrlHash: hashString(file.originalUrl),
           localPath: file.localPath,
           width: dimensions.get(file.originalUrl)?.width ?? null,
           height: dimensions.get(file.originalUrl)?.height ?? null,

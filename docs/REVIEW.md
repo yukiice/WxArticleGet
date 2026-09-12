@@ -69,8 +69,8 @@
 | 前端 | Next.js 15 + Tailwind CSS + shadcn/ui（阅读端与管理后台一体，响应式 + PWA） |
 | 后端 | NestJS |
 | ORM | Prisma |
-| 数据库 | PostgreSQL |
-| 任务队列 | pg-boss（基于 PG，无需额外引入 Redis） |
+| 数据库 | MySQL 8（外部队列要求；时间统一按 UTC 存取） |
+| 任务队列 | MySQL `job_queue` 表自建（`packages/queue`，无需额外引入 Redis） |
 | 抓取 | fetch/undici + cheerio + sanitize-html |
 | AI | DeepSeek API（走 openai SDK 兼容协议） |
 | 邮件 | nodemailer + 手写 HTML 模板，默认「摘要 + 链接」 |
@@ -78,6 +78,7 @@
 | 数据源 | 尽量免费，接受偶发失效 |
 | 首次接入回溯 | 3 天（默认值，可手动调整，不写死） |
 | 部署 | 自有服务器 + 域名（细节暂缓，先留 docker-compose 骨架） |
+| 数据库变更（2026-09） | 由 PostgreSQL 改为 MySQL 8（外部环境要求）；队列随之从 pg-boss 换成 MySQL `job_queue` 表，历史数据已迁移 |
 
 ## 6. 里程碑与估算（单人）
 

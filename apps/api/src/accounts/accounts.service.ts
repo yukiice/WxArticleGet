@@ -48,10 +48,8 @@ export class AccountsService {
   private async searchCatalog(keyword: string): Promise<AccountCandidate[]> {
     const rows = await this.prisma.feedCatalogEntry.findMany({
       where: {
-        OR: [
-          { name: { contains: keyword, mode: 'insensitive' } },
-          { feedUrl: { contains: keyword, mode: 'insensitive' } },
-        ],
+        // MySQL 的 *_ci 排序规则天然大小写不敏感
+        OR: [{ name: { contains: keyword } }, { feedUrl: { contains: keyword } }],
       },
       take: 40,
     });

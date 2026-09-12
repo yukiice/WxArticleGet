@@ -6,7 +6,7 @@ import { DigestService } from '../services/digest.service';
 import { IngestService, type FetchAccountResult } from '../services/ingest.service';
 import { NotifyService } from '../services/notify.service';
 import { SummaryService, type SummaryRunResult } from '../services/summary.service';
-import { BossProvider } from './boss.provider';
+import { QueueProvider } from './queue.provider';
 
 @Injectable()
 export class JobRunnerService {
@@ -14,7 +14,7 @@ export class JobRunnerService {
 
   constructor(
     private readonly prisma: PrismaService,
-    private readonly boss: BossProvider,
+    private readonly queue: QueueProvider,
     private readonly ingest: IngestService,
     private readonly summary: SummaryService,
     private readonly digest: DigestService,
@@ -35,7 +35,7 @@ export class JobRunnerService {
     }
 
     for (const account of accounts) {
-      await this.boss.enqueue(
+      await this.queue.enqueue(
         JOB.FETCH_ACCOUNT,
         { accountId: account.id },
         { singletonKey: `auto-${account.id}-${dateKey()}` },
@@ -80,7 +80,7 @@ export class JobRunnerService {
   /** worker 启动时如果目录为空或过期，异步补一次同步 */
   async syncCatalogIfStale(): Promise<boolean> {
     if (!(await this.catalog.needsSync())) return false;
-    await this.boss.enqueue(JOB.SYNC_CATALOG, {}, { singletonKey: `catalog-bootstrap-${dateKey()}` });
+    await this.queue.enqueue(JOB.SYNC_CATALOG, {}, { singletonKey: `catalog-bootstrap-${dateKey()}` });
     this.logger.log('目录为空或已过期，已派发同步任务');
     return true;
   }

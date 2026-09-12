@@ -1,8 +1,8 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
-import { BossProvider } from './boss/boss.provider';
-import { BossService } from './boss/boss.service';
-import { JobRunnerService } from './boss/job-runner.service';
+import { JobRunnerService } from './queue/job-runner.service';
+import { QueueProvider } from './queue/queue.provider';
+import { ScheduleService } from './queue/schedule.service';
 import { PrismaModule } from './prisma/prisma.module';
 import { CatalogService } from './services/catalog.service';
 import { DigestService } from './services/digest.service';
@@ -22,7 +22,7 @@ import { SettingsModule } from './settings/settings.module';
     SettingsModule,
   ],
   providers: [
-    BossProvider,
+    QueueProvider,
     LocalizeService,
     NotifyService,
     IngestService,
@@ -30,7 +30,7 @@ import { SettingsModule } from './settings/settings.module';
     DigestService,
     CatalogService,
     JobRunnerService,
-    BossService,
+    ScheduleService,
   ],
 })
 export class AppModule {}
