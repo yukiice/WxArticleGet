@@ -93,7 +93,8 @@ interface ArticleSourceProvider {
 ### 4.4 AI 每日总结
 
 - 任务：按统计区间聚合文章（正常为过去 24 小时，首尾相接不重不漏），生成一份 Markdown 总结
-- 区间来源：`fetch-all` 按「上次成功发出日报的时刻 → 本次抓取开始时刻」计算后随任务下发，落库在 `summaries.windowFrom/windowTo`；手动触发时默认回退为过去 24 小时
+- 区间来源：`fetch-all` 按「上次成功发出日报的时刻 → 本次抓取开始时刻」计算后随任务下发，落库在 `summaries.windowFrom/windowTo`
+- 手动补生成/重发历史某天走同一套 `resolveDailyWindow()`：截止点取该日 24:00（Asia/Shanghai），起点接该日之前最近一次成功产出日报的时刻（无则回退 24 小时）
 - 调用：openai SDK + `baseURL: https://api.deepseek.com`，模型 `deepseek-chat`
 - prompt 模板版本化落库（`summaries.promptVer`），记录 token 消耗
 - 区间内没有新文章时不调用模型，写一条 `status = empty` 的记录供后台与阅读端查看

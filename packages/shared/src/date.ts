@@ -102,6 +102,23 @@ export function digestWindow(
   return { from, to: cutoff };
 }
 
+/**
+ * 归属到某个自然日的日报窗口：截止点 = 该日结束（Asia/Shanghai 24:00），
+ * 起点 = 该日结束时刻之前最近一次成功产出日报的时刻（没发成功则回退 24 小时）。
+ *
+ * 自动链路（fetch-all）用当下时刻当截止点，手动补生成/重发历史某天用日边界，
+ * 两者口径一致：同一天算出来的区间相同，不会把后一天的文章算进来。
+ */
+export function resolveDailyWindow(
+  dateKeyValue: string,
+  lastDigestAt: Date | null,
+  options: { windowHours?: number; timeZone?: string; cutoff?: Date } = {},
+): { from: Date; to: Date; dateValue: string } {
+  const end = options.cutoff ?? dayRange(dateKeyValue, options.timeZone).end;
+  const { from, to } = digestWindow(lastDigestAt, end, options.windowHours);
+  return { from, to, dateValue: dateKeyValue };
+}
+
 /** 人类可读的时间范围，如「09-12 08:30 → 09-13 08:30」 */
 export function formatRange(from: Date, to: Date, timeZone: string = DEFAULT_TIMEZONE): string {
   const formatter = new Intl.DateTimeFormat('en-CA', {

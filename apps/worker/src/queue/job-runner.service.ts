@@ -1,7 +1,17 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { nextRunAt } from '@wx/queue';
-import { DEFAULT_TIMEZONE, JOB, dailyCron, dateKey, digestWindow, formatDateTime, formatRange, type JobPayloads } from '@wx/shared';
+import {
+  DEFAULT_TIMEZONE,
+  JOB,
+  dailyCron,
+  dateKey,
+  dayRange,
+  formatDateTime,
+  formatRange,
+  resolveDailyWindow,
+  type JobPayloads,
+} from '@wx/shared';
 import { PrismaService } from '../prisma/prisma.service';
 import { CatalogService, type CatalogSyncResult } from '../services/catalog.service';
 import { DigestService } from '../services/digest.service';
@@ -62,13 +72,7 @@ export class JobRunnerService {
   private async enqueueDailyDigest(cutoff: Date): Promise<{ windowFrom: string; windowTo: string }> {
     const target = dateKey(cutoff);
     const settings = await this.settings.resolveAll();
-    const lastProduced = await this.prisma.sendLog.findFirst({
-      where: { status: { in: ['success', 'skipped'] } },
-      orderBy: { createdAt: 'desc' },
-      select: { sentAt: true, createdAt: true },
-    });
-    const lastDigestAt = lastProduced?.sentAt ?? lastProduced?.createdAt ?? null;
-    const { from, to } = digestWindow(lastDigestAt, cutoff);
+    const { from, to } = await this.resolveWindow(target, cutoff);
     const windowFrom = from.toISOString();
     const windowTo = to.toISOString();
 
@@ -89,6 +93,23 @@ export class JobRunnerService {
       `日报已排期：统计区间 ${formatRange(from, to)}，发送时间 ${formatDateTime(sendAt)}（发送时间设置 ${settings.digest.sendTime}）`,
     );
     return { windowFrom, windowTo };
+  }
+
+  /**
+   * 计算某个自然日对应的日报统计区间。
+   *
+   * 自动链路传当下时刻当截止点（抓取覆盖到哪就统计到哪）；手动补生成/重发历史某天时不传，
+   * 截止点取该日边界，且不把该日自己的发送记录算进起点，保证同一天算出来的区间一致。
+   */
+  async resolveWindow(target: string, cutoff?: Date): Promise<{ from: Date; to: Date }> {
+    const dayStart = dayRange(target).start;
+    const lastProduced = await this.prisma.sendLog.findFirst({
+      where: { status: { in: ['success', 'skipped'] }, createdAt: { lt: dayStart } },
+      orderBy: { createdAt: 'desc' },
+      select: { sentAt: true, createdAt: true },
+    });
+    const lastDigestAt = lastProduced?.sentAt ?? lastProduced?.createdAt ?? null;
+    return resolveDailyWindow(target, lastDigestAt, { timeZone: DEFAULT_TIMEZONE, cutoff });
   }
 
   /**

@@ -4,6 +4,7 @@ import { renderDigestEmail, sendMail, type DigestArticle } from '@wx/email';
 import {
   dateKey,
   dayRange,
+  resolveDailyWindow,
   type Paginated,
   type RecipientCreateInput,
   type SendLogDto,
@@ -105,8 +106,26 @@ export class MailService {
   }
 
   async sendNow(date?: string): Promise<{ queued: boolean }> {
-    await this.queue.enqueue('send-digest', { date }, { singletonKey: `digest-${Date.now()}` });
+    const target = date ?? dateKey();
+    const { from, to } = await this.resolveWindow(target);
+    await this.queue.enqueue(
+      'send-digest',
+      { date: target, windowFrom: from.toISOString(), windowTo: to.toISOString() },
+      { singletonKey: `digest-${Date.now()}` },
+    );
     return { queued: true };
+  }
+
+  /** 与自动链路口径一致：截止点取该日 24:00，起点接上次成功产出日报的时刻（无则回退 24 小时） */
+  private async resolveWindow(target: string): Promise<{ from: Date; to: Date }> {
+    const lastProduced = await this.prisma.sendLog.findFirst({
+      where: { status: { in: ['success', 'skipped'] }, createdAt: { lt: dayRange(target).start } },
+      orderBy: { createdAt: 'desc' },
+      select: { sentAt: true, createdAt: true },
+    });
+    const lastDigestAt = lastProduced?.sentAt ?? lastProduced?.createdAt ?? null;
+    const { from, to } = resolveDailyWindow(target, lastDigestAt);
+    return { from, to };
   }
 
   async logs(page: number, pageSize: number): Promise<Paginated<SendLogDto>> {
