@@ -1,6 +1,6 @@
 import { mkdir, writeFile } from 'node:fs/promises';
 import path from 'node:path';
-import { fetchBinary } from '../http';
+import { fetchImage } from '../image';
 import { fetchArticle } from '../providers/lookup';
 import { hashString } from '../url-utils';
 
@@ -54,11 +54,10 @@ async function main(): Promise<void> {
     for (const image of parsed.images) {
       index += 1;
       try {
-        const { data, contentType } = await fetchBinary(image.originalUrl, {
+        const { data, contentType, extension } = await fetchImage(image.originalUrl, {
           headers: { Referer: 'https://mp.weixin.qq.com/' },
         });
-        const ext = guessExtension(contentType, image.originalUrl);
-        const file = `${String(index).padStart(2, '0')}-${hashString(image.originalUrl).slice(0, 8)}${ext}`;
+        const file = `${String(index).padStart(2, '0')}-${hashString(image.originalUrl).slice(0, 8)}${extension}`;
         await writeFile(path.join(imageDir, file), data);
         console.log(`  ✓ ${file} (${(data.byteLength / 1024).toFixed(0)} KB, ${contentType ?? 'unknown'})`);
       } catch (error) {
@@ -68,16 +67,6 @@ async function main(): Promise<void> {
   }
 
   console.log(`[poc] 结果已写入 ${outputDir}`);
-}
-
-function guessExtension(contentType: string | null, url: string): string {
-  if (contentType?.includes('png')) return '.png';
-  if (contentType?.includes('gif')) return '.gif';
-  if (contentType?.includes('webp')) return '.webp';
-  if (contentType?.includes('jpeg') || contentType?.includes('jpg')) return '.jpg';
-  const match = /wx_fmt=(\w+)/.exec(url);
-  if (match) return `.${match[1] === 'jpeg' ? 'jpg' : match[1]}`;
-  return '.jpg';
 }
 
 main().catch((error) => {

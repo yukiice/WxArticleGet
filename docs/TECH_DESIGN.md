@@ -87,14 +87,14 @@ interface ArticleSourceProvider {
 ### 4.3 内容处理
 
 - `sanitize-html` 白名单清洗：剔除 script / iframe / 公众号推广卡片 / 广告位
-- 图片本地化：按 UA/Referer 规则下载 `mmbiz.qpic.cn` 资源 -> `DATA_DIR/images/<hash>.<ext>`，正文 URL 重写为站内路径；同步生成列表页缩略图
+- 图片本地化：按 UA/Referer 下载公网图片到 `DATA_DIR/images/<articleId>/<hash>.<ext>`，正文 URL 重写为站内路径；封面保存在 `covers/`。每次跳转重新校验 IP，并把已校验的 DNS 结果固定到实际连接，禁止访问内网/保留地址；按文件签名和 MIME 校验 PNG/JPEG/GIF/WebP，限制 10 MB，扩展名不取自外部 URL。`/files` 仅开放这些图片路径并设置 nosniff / CSP，阻止旧 HTML/SVG 文件同源执行。
 - 归一化：抽出纯文本（`contentText`）用于摘要与检索，保留清洗后的 `contentHtml` 用于渲染
 
 ### 4.4 AI 每日总结
 
 - 任务：按统计区间聚合文章（正常为过去 24 小时，首尾相接不重不漏），生成一份 Markdown 总结
-- 区间来源：`fetch-all` 按「上次成功发出日报的时刻 → 本次抓取开始时刻」计算后随任务下发，落库在 `summaries.windowFrom/windowTo`
-- 手动补生成/重发历史某天走同一套 `resolveDailyWindow()`：截止点取该日 24:00（Asia/Shanghai），起点接该日之前最近一次成功产出日报的时刻（无则回退 24 小时）
+- 区间来源：`fetch-all` 按「上份已产出日报的 windowTo → 本次抓取开始时刻」计算，落库在 `summaries.windowFrom/windowTo`；发送成功或无文章时也记录 `send_logs.windowFrom/windowTo`，续接不依赖发信时刻。
+- API、总结和发送共用 `@wx/db` 的 `resolveDigestWindow()`，优先复用已保存窗口。没有窗口时，自动链路用抓取开始时刻，手动/兜底用该日 24:00；起点接该日之前最近一次成功/无文章日报的统计截止点，无记录则回退 24 小时。
 - 调用：openai SDK + `baseURL: https://api.deepseek.com`，模型 `deepseek-chat`
 - prompt 模板版本化落库（`summaries.promptVer`），记录 token 消耗
 - 区间内没有新文章时不调用模型，写一条 `status = empty` 的记录供后台与阅读端查看
@@ -112,11 +112,11 @@ interface ArticleSourceProvider {
 ### 4.6 调度与任务
 
 - 队列就是 MySQL 的 `job_queue` 表（`packages/queue`）：API 侧只写库入队，worker 侧每 3s 轮询认领并串行执行
-- 语义对齐原 pg-boss 方案：延迟执行、`singletonKey` 去重、失败按 2^n 退避重试（默认 3 次）、`running` 超时回收（默认 30 分钟）、历史任务自动清理（默认 7 天）
+- 语义对齐原 pg-boss 方案：延迟执行、`singletonKey` 唯一约束保证并发去重（完成/最终失败释放键）、失败按 2^n 退避重试（默认 3 次）、`running` 超时回收（默认 30 分钟）、历史任务自动清理（默认 7 天）
 - worker 进程内注册 cron：`sync-catalog` 03:00 / `fetch-all` 08:30 / `summarize-day` 08:45（兜底）/ `send-digest` 邮件发送时间（默认 09:00）+ 30 分钟兜底；重启后按最新配置重新注册
-- 任务链路：`fetch-all`（算区间 + 派发抓取 + 排期）-> 账号抓取（`fetch-account`）-> 单篇处理（`process-article`）-> `summarize-day` -> `send-digest`（按发送时间延时入队）
+- 任务链路：`fetch-all` 在同一事务中保存窗口、抓取任务 ID 和排期；`fetch-account` 内完成单篇处理，再由 `summarize-day` / `send-digest` 读取 `summaries.fetchJobIds` 等待本批抓取成功。等待不消耗失败重试次数，最终抓取失败时禁止产出不完整日报；手动重试失败账号保留原任务 ID，成功后可重新生成/发送。
 - 抓取窗口：`fetchWindowStart()` 取「上次成功抓取时间 → 现在」，正常为 24 小时；上次成功更早则从该时间点补抓，上限 7 天；首次接入用 `FIRST_RUN_LOOKBACK_DAYS`
-- 发送去重：`send-digest` 发现当天已有 `success` / `skipped` 记录时直接跳过，兜底 cron 与重复触发都不会重复发信
+- 发送去重：自动 `send-digest` 发现当天已有 `success` / `skipped` 记录时跳过；后台「立即发送」显式设置人工补发标记，可在这两种状态之后重发，排队中的重复点击仍由 singletonKey 合并。
 - 任务幂等：文章维度用 `urlHash` 作为 unique key；抓取任务可重复触发不产生脏数据
 - 后台「立即抓取 / 立即生成总结 / 立即发送邮件」复用同一套任务
 - 抓取失败、LLM 失败等真异常才会触发告警邮件
@@ -143,7 +143,7 @@ interface ArticleSourceProvider {
 | `QUEUE_POLL_MS` / `QUEUE_EXPIRE_MINUTES` / `QUEUE_RETRY_DELAY_MS` / `QUEUE_KEEP_DAYS` | 队列轮询间隔 / 超时回收 / 重试基础间隔 / 历史保留天数（均可选） |
 | `APP_BASE_URL` | 公网域名，邮件内链必需 |
 | `AUTH_SECRET` | 单用户会话签名 |
-| `DATA_DIR` | 图片与附件存储根目录 |
+| `DATA_DIR` | 图片存储根目录；相对路径固定以仓库根目录为基准，API 与 worker 共用 |
 | `DEEPSEEK_API_KEY` / `DEEPSEEK_BASE_URL` / `LLM_MODEL` | AI 总结配置 |
 | `SMTP_HOST` / `SMTP_PORT` / `SMTP_USER` / `SMTP_PASS` | 163 SMTP，`SMTP_PASS` 为授权码 |
 | `MAIL_TO` | 默认收件人 |

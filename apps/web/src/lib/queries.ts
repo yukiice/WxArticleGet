@@ -1,6 +1,6 @@
 'use client';
 
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import type {
   CreateAccountInput,
   CreateUserInput,
@@ -25,11 +25,13 @@ export const queryKeys = {
   me: ['me'] as const,
 };
 
-export function useArticles(params: ArticleQueryParams) {
-  return useQuery({
+export function useArticles(params: Omit<ArticleQueryParams, 'page'>) {
+  return useInfiniteQuery({
     queryKey: queryKeys.articles(params),
-    queryFn: () => endpoints.articles(params),
-    placeholderData: (previous) => previous,
+    initialPageParam: 1,
+    queryFn: ({ pageParam }) => endpoints.articles({ ...params, page: pageParam }),
+    getNextPageParam: (lastPage) =>
+      lastPage.items.length > 0 && lastPage.page * lastPage.pageSize < lastPage.total ? lastPage.page + 1 : undefined,
   });
 }
 

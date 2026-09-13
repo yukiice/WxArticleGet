@@ -2,7 +2,8 @@ import { mkdir, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { fetchBinary, hashString, type ExtractedImage } from '@wx/wechat';
+import { fetchImage, hashString, type ExtractedImage } from '@wx/wechat';
+import { resolveDataDir } from '@wx/shared/node';
 
 export interface LocalizeResult {
   contentHtml: string;
@@ -17,7 +18,7 @@ export class LocalizeService {
   private readonly dataDir: string;
 
   constructor(config: ConfigService) {
-    this.dataDir = path.resolve(config.get<string>('DATA_DIR') ?? './data');
+    this.dataDir = resolveDataDir(config.get<string>('DATA_DIR'));
   }
 
   async localizeImages(articleId: string, contentHtml: string, images: ExtractedImage[]): Promise<LocalizeResult> {
@@ -51,14 +52,13 @@ export class LocalizeService {
   }
 
   private async download(url: string, relativeDir: string): Promise<string> {
-    const response = await fetchBinary(url, {
+    const response = await fetchImage(url, {
       headers: { Referer: 'https://mp.weixin.qq.com/' },
       timeoutMs: 30_000,
       retries: 1,
     });
 
-    const extension = guessExtension(response.contentType, url);
-    const fileName = `${hashString(url).slice(0, 24)}${extension}`;
+    const fileName = `${hashString(url).slice(0, 24)}${response.extension}`;
     const absoluteDir = path.join(this.dataDir, relativeDir);
     await mkdir(absoluteDir, { recursive: true });
     await writeFile(path.join(absoluteDir, fileName), response.data);
@@ -70,24 +70,4 @@ export class LocalizeService {
 function replaceAll(source: string, search: string, replacement: string): string {
   const escaped = search.replace(/&/g, '&amp;');
   return source.split(search).join(replacement).split(escaped).join(replacement);
-}
-
-function guessExtension(contentType: string | null, url: string): string {
-  if (contentType?.includes('png')) return '.png';
-  if (contentType?.includes('gif')) return '.gif';
-  if (contentType?.includes('webp')) return '.webp';
-  if (contentType?.includes('jpeg') || contentType?.includes('jpg')) return '.jpg';
-
-  const wxFmt = /wx_fmt=(\w+)/.exec(url)?.[1];
-  if (wxFmt) return `.${wxFmt === 'jpeg' ? 'jpg' : wxFmt}`;
-
-  const pathname = (() => {
-    try {
-      return new URL(url).pathname;
-    } catch {
-      return '';
-    }
-  })();
-  const ext = path.extname(pathname).toLowerCase();
-  return ['.png', '.gif', '.webp', '.jpg', '.jpeg'].includes(ext) ? ext : '.jpg';
 }

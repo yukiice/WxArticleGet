@@ -1,6 +1,6 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
-import { dateKey, dayRange, resolveDailyWindow, type SummaryDto } from '@wx/shared';
-import type { Summary } from '@wx/db';
+import { dateKey, type SummaryDto } from '@wx/shared';
+import { resolveDigestWindow, type Summary } from '@wx/db';
 import { PrismaService } from '../prisma/prisma.service';
 import { QueueService } from '../queue/queue.service';
 
@@ -40,37 +40,13 @@ export class SummariesService {
 
   async run(date?: string, force = false): Promise<{ queued: boolean; date: string }> {
     const target = date ?? dateKey();
-    const { from, to } = await this.resolveWindow(target);
+    const { from, to } = await resolveDigestWindow(this.prisma, target);
     await this.queue.enqueue(
       'summarize-day',
       { date: target, force, windowFrom: from.toISOString(), windowTo: to.toISOString() },
-      { singletonKey: `summary-${target}-${Date.now()}` },
+      { singletonKey: `manual-summary-${target}` },
     );
     return { queued: true, date: target };
-  }
-
-  /**
-   * 与自动链路保持同一口径：截止点取该日 24:00，起点取该日之前最近一次成功产出日报的时刻，
-   * 没发成功过则回退 24 小时。手动补生成历史某天时不会把后一天的文章算进来。
-   */
-  private async resolveWindow(target: string): Promise<{ from: Date; to: Date }> {
-    // 该日已有总结时沿用它的区间：重跑不会因为日边界口径把区间放大成跨天
-    const existing = await this.prisma.summary.findFirst({
-      where: { date: toDateOnly(target), scope: 'global', windowFrom: { not: null }, windowTo: { not: null } },
-      select: { windowFrom: true, windowTo: true },
-    });
-    if (existing?.windowFrom && existing.windowTo) {
-      return { from: existing.windowFrom, to: existing.windowTo };
-    }
-
-    const lastProduced = await this.prisma.sendLog.findFirst({
-      where: { status: { in: ['success', 'skipped'] }, createdAt: { lt: dayRange(target).start } },
-      orderBy: { createdAt: 'desc' },
-      select: { sentAt: true, createdAt: true },
-    });
-    const lastDigestAt = lastProduced?.sentAt ?? lastProduced?.createdAt ?? null;
-    const { from, to } = resolveDailyWindow(target, lastDigestAt);
-    return { from, to };
   }
 }
 

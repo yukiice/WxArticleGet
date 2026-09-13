@@ -1,6 +1,6 @@
 import 'reflect-metadata';
 import { mkdir } from 'node:fs/promises';
-import path from 'node:path';
+import { resolveDataDir } from '@wx/shared/node';
 import { Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { NestFactory } from '@nestjs/core';
@@ -9,6 +9,7 @@ import cookieParser from 'cookie-parser';
 import { AppModule } from './app.module';
 import { AllExceptionsFilter } from './common/all-exceptions.filter';
 import { ResponseInterceptor } from './common/response.interceptor';
+import { imageFilesOnly } from './files';
 
 async function bootstrap(): Promise<void> {
   const app = await NestFactory.create<NestExpressApplication>(AppModule);
@@ -21,8 +22,9 @@ async function bootstrap(): Promise<void> {
   app.useGlobalFilters(new AllExceptionsFilter());
   app.enableShutdownHooks();
 
-  const dataDir = path.resolve(config.get<string>('DATA_DIR') ?? './data');
+  const dataDir = resolveDataDir(config.get<string>('DATA_DIR'));
   await mkdir(dataDir, { recursive: true });
+  app.use('/files', imageFilesOnly);
   app.useStaticAssets(dataDir, { prefix: '/files/' });
 
   const port = Number(config.get<string>('PORT') ?? 3001);

@@ -1,7 +1,7 @@
 import { setTimeout as delay } from 'node:timers/promises';
 import { Injectable, Logger } from '@nestjs/common';
 import { Prisma } from '@wx/db';
-import { fetchWindowStart, type JobPayloads, type ParsedArticle, type RawArticle, type ResolvedSettings } from '@wx/shared';
+import { MAX_FETCH_LOOKBACK_DAYS, fetchWindowStart, type JobPayloads, type ParsedArticle, type RawArticle, type ResolvedSettings } from '@wx/shared';
 import {
   ArticleUnavailableError,
   countWords,
@@ -49,6 +49,7 @@ export class IngestService {
   }
 
   async fetchAccount(payload: JobPayloads['fetch-account']): Promise<FetchAccountResult> {
+    const startedAt = new Date();
     const account = await this.prisma.account.findUnique({ where: { id: payload.accountId } });
     if (!account) throw new Error(`账号不存在：${payload.accountId}`);
 
@@ -60,10 +61,15 @@ export class IngestService {
 
     // 常规窗口 = 最近 24 小时；上次成功抓取更早（失败/停机）则从上次成功时刻开始补，最多回溯 7 天；
     // 手动触发可显式传 sinceDays 覆盖
-    const since =
+    let since =
       payload.sinceDays !== undefined
         ? new Date(Date.now() - payload.sinceDays * 24 * 60 * 60 * 1000)
-        : fetchWindowStart(account.lastSuccessAt, { firstRunDays: settings.fetch.lookbackDays });
+        : fetchWindowStart(account.lastSuccessAt, { firstRunDays: settings.fetch.lookbackDays }, startedAt);
+    if (payload.windowFrom) {
+      const windowStart = new Date(payload.windowFrom);
+      const floor = new Date(startedAt.getTime() - MAX_FETCH_LOOKBACK_DAYS * 24 * 60 * 60 * 1000);
+      if (windowStart < since) since = windowStart < floor ? floor : windowStart;
+    }
 
     try {
       const candidates = await this.collectCandidates(account, payload, since, settings, context);
@@ -78,11 +84,12 @@ export class IngestService {
           if (created) newCount += 1;
           else skipped += 1;
         } catch (error) {
-          failed += 1;
           const message = error instanceof Error ? error.message : String(error);
-          if (error instanceof ArticleUnavailableError) {
+          if (error instanceof ArticleUnavailableError && ['deleted', 'blocked', 'revoked', 'migrated'].includes(error.reason)) {
+            skipped += 1;
             this.logger.warn(`文章不可用 ${item.url}: ${message}`);
           } else {
+            failed += 1;
             this.logger.error(`文章处理失败 ${item.url}: ${message}`);
           }
         }
@@ -92,10 +99,20 @@ export class IngestService {
         }
       }
 
+      if (failed > 0) {
+        await this.prisma.jobLog.update({ where: { id: jobLog.id }, data: { newCount } });
+        throw new Error(`${failed} 篇文章处理失败，将重试；成功时间保持原值`);
+      }
+
       const now = new Date();
       await this.prisma.account.update({
         where: { id: account.id },
-        data: { lastFetchAt: now, lastSuccessAt: now, status: 'active' },
+        // 手动补录单篇不代表订阅源已完整扫描；成功边界取抓取开始，避免处理中出现的文章被跳过。
+        data: {
+          lastFetchAt: now,
+          ...(!payload.urls?.length ? { lastSuccessAt: startedAt } : {}),
+          ...(account.status === 'paused' ? {} : { status: 'active' }),
+        },
       });
       await this.prisma.jobLog.update({
         where: { id: jobLog.id },
@@ -103,7 +120,7 @@ export class IngestService {
           status: 'success',
           newCount,
           finishedAt: now,
-          error: failed > 0 ? `${failed} 篇处理失败` : null,
+          error: null,
         },
       });
 
@@ -120,7 +137,7 @@ export class IngestService {
       });
       await this.prisma.account.update({
         where: { id: account.id },
-        data: { status: 'error', lastFetchAt: new Date() },
+        data: { ...(account.status === 'paused' ? {} : { status: 'error' }), lastFetchAt: new Date() },
       });
       await this.notify.alert(
         `抓取失败：${account.name}`,
@@ -161,8 +178,11 @@ export class IngestService {
     settings: ResolvedSettings,
   ): Promise<boolean> {
     const urlHash = hashUrl(raw.url);
-    const existing = await this.prisma.article.findUnique({ where: { urlHash }, select: { id: true } });
-    if (existing) return false;
+    const existing = await this.prisma.article.findUnique({ where: { urlHash }, select: { id: true, processed: true } });
+    if (existing) {
+      if (!existing.processed) await this.reprocess(existing.id);
+      return false;
+    }
 
     const parsed = await this.parseContent(raw, context);
     const biz = parsed.biz ?? raw.biz ?? account.biz;

@@ -1,6 +1,6 @@
 export interface JobPayloads {
   'fetch-all': { date?: string };
-  'fetch-account': { accountId: string; sinceDays?: number; manual?: boolean; urls?: string[] };
+  'fetch-account': { accountId: string; sinceDays?: number; manual?: boolean; urls?: string[]; windowFrom?: string };
   'process-article': { articleId: string };
   'summarize-day': { date?: string; force?: boolean; windowFrom?: string; windowTo?: string };
   'send-digest': {
@@ -11,6 +11,8 @@ export interface JobPayloads {
     windowTo?: string;
     /** 定时任务触发的发送：当天已经发过（含「无新文章」跳过）就不再重复发 */
     scheduled?: boolean;
+    /** 仅人工补发使用；自动重试和兜底仍按日期去重。 */
+    force?: boolean;
     /** 总结还没生成完时的顺延次数，内部使用 */
     deferCount?: number;
   };

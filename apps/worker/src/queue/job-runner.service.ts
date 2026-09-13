@@ -1,15 +1,14 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { nextRunAt } from '@wx/queue';
+import { JobQueue, nextRunAt } from '@wx/queue';
+import { resolveDigestWindow } from '@wx/db';
 import {
   DEFAULT_TIMEZONE,
   JOB,
   dailyCron,
   dateKey,
-  dayRange,
   formatDateTime,
   formatRange,
-  resolveDailyWindow,
   type JobPayloads,
 } from '@wx/shared';
 import { PrismaService } from '../prisma/prisma.service';
@@ -37,83 +36,61 @@ export class JobRunnerService {
     private readonly config: ConfigService,
   ) {}
 
-  /** 每日定时：为所有未暂停的账号派发抓取任务 */
-  /**
-   * 每日定时：先抓所有账号，再串起「生成总结 → 定时发送日报」。
-   *
-   * 统计区间 = (上次成功产出日报的时刻, 本次抓取开始时刻]，正常就是过去 24 小时；
-   * 用「本次抓取开始时刻」当截止点，可以保证一篇文章只会出现在一份日报里，也不会漏。
-   */
+  /** 原子发布一批抓取任务和日报窗口；总结/发送会等待这些任务成功完成。 */
   async fetchAll(): Promise<{ dispatched: number; windowFrom: string; windowTo: string }> {
     const cutoff = new Date();
+    const target = dateKey(cutoff);
+    const settings = await this.settings.resolveAll();
     const accounts = await this.prisma.account.findMany({
       where: { status: { not: 'paused' } },
       select: { id: true, name: true },
     });
 
-    if (accounts.length === 0) {
-      this.logger.warn('没有需要抓取的账号');
-    } else {
-      for (const account of accounts) {
-        await this.queue.enqueue(
-          JOB.FETCH_ACCOUNT,
-          { accountId: account.id },
-          { singletonKey: `auto-${account.id}-${dateKey(cutoff)}` },
-        );
-      }
-      this.logger.log(`已派发 ${accounts.length} 个账号的抓取任务`);
-    }
-
-    const window = await this.enqueueDailyDigest(cutoff);
-    return { dispatched: accounts.length, ...window };
-  }
-
-  /** 抓取结束后：生成日报总结，并把发送任务排到设定的发送时间 */
-  private async enqueueDailyDigest(cutoff: Date): Promise<{ windowFrom: string; windowTo: string }> {
-    const target = dateKey(cutoff);
-    const settings = await this.settings.resolveAll();
-    const { from, to } = await this.resolveWindow(target, cutoff);
-    const windowFrom = from.toISOString();
-    const windowTo = to.toISOString();
-
-    await this.queue.enqueue(
-      JOB.SUMMARIZE_DAY,
-      { date: target, force: true, windowFrom, windowTo },
-      { singletonKey: `summary-${target}` },
-    );
-
     const sendAt = this.nextSendAt(settings.digest.sendTime, cutoff);
-    await this.queue.enqueue(
-      JOB.SEND_DIGEST,
-      { date: target, windowFrom, windowTo, scheduled: true },
-      { runAt: sendAt, singletonKey: `digest-${target}` },
-    );
+    const window = await this.prisma.$transaction(async (tx) => {
+      const { from, to } = await resolveDigestWindow(tx, target, cutoff);
+      const queue = new JobQueue(tx);
+      const fetchJobIds: string[] = [];
+      for (const account of accounts) {
+        const id = await queue.enqueue(
+          JOB.FETCH_ACCOUNT,
+          { accountId: account.id, windowFrom: from.toISOString() },
+          { singletonKey: `auto-${account.id}-${target}` },
+        );
+        if (id) fetchJobIds.push(id);
+      }
+      const date = new Date(`${target}T00:00:00.000Z`);
+      const existing = await tx.summary.findFirst({ where: { date, scope: 'global' }, select: { id: true } });
+      const data = { windowFrom: from, windowTo: to, fetchJobIds, status: 'pending' };
+      if (existing) {
+        await tx.summary.update({ where: { id: existing.id }, data });
+      } else {
+        await tx.summary.create({
+          data: {
+            ...data, date, scope: 'global', model: settings.llm.model, promptVer: 'v2',
+            contentMd: '', articleCount: 0, tokenIn: 0, tokenOut: 0,
+          },
+        });
+      }
 
+      const windowFrom = from.toISOString();
+      const windowTo = to.toISOString();
+      await queue.enqueue(
+        JOB.SUMMARIZE_DAY,
+        { date: target, windowFrom, windowTo },
+        { singletonKey: `summary-${target}` },
+      );
+      await queue.enqueue(
+        JOB.SEND_DIGEST,
+        { date: target, windowFrom, windowTo, scheduled: true },
+        { runAt: sendAt, singletonKey: `digest-${target}` },
+      );
+      return { windowFrom, windowTo };
+    }, { timeout: 30_000 });
     this.logger.log(
-      `日报已排期：统计区间 ${formatRange(from, to)}，发送时间 ${formatDateTime(sendAt)}（发送时间设置 ${settings.digest.sendTime}）`,
+      `已派发 ${accounts.length} 个账号；日报区间 ${formatRange(new Date(window.windowFrom), new Date(window.windowTo))}，发送时间 ${formatDateTime(sendAt)}`,
     );
-    return { windowFrom, windowTo };
-  }
-
-  /**
-   * 计算某个自然日对应的日报统计区间。
-   *
-   * 自动链路传当下时刻当截止点（抓取覆盖到哪就统计到哪）；手动补生成/重发历史某天时不传，
-   * 截止点取该日边界，且不把该日自己的发送记录算进起点，保证同一天算出来的区间一致。
-   */
-  async resolveWindow(target: string, cutoff?: Date): Promise<{ from: Date; to: Date }> {
-    const lastProduced = await this.prisma.sendLog.findFirst({
-      where: {
-        status: { in: ['success', 'skipped'] },
-        // 自动链路：起点是「这个截止时刻之前」最近一次产出，不能额外要求它早于当天 00:00，
-        // 否则每天 08:30 都会把前一天 09:00 那次最近的发送记录排除掉，区间从 24 小时膨胀成 39 小时
-        ...(cutoff ? {} : { createdAt: { lt: dayRange(target).start } }),
-      },
-      orderBy: { createdAt: 'desc' },
-      select: { sentAt: true, createdAt: true },
-    });
-    const lastDigestAt = lastProduced?.sentAt ?? lastProduced?.createdAt ?? null;
-    return resolveDailyWindow(target, lastDigestAt, { timeZone: DEFAULT_TIMEZONE, cutoff });
+    return { dispatched: accounts.length, ...window };
   }
 
   /**

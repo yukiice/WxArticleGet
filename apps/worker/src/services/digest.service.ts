@@ -1,11 +1,13 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { renderDigestEmail, sendMail, type DigestArticle } from '@wx/email';
-import { DEFAULT_DIGEST_WINDOW_HOURS, JOB, dateKey, formatDateTime, formatRange, type JobPayloads } from '@wx/shared';
+import { JOB, dateKey, formatDateTime, formatRange, type JobPayloads } from '@wx/shared';
+import { resolveDigestWindow } from '@wx/db';
 import { PrismaService } from '../prisma/prisma.service';
 import { QueueProvider } from '../queue/queue.provider';
 import { SettingsService } from '../settings/settings.service';
 import { NotifyService } from './notify.service';
+import { waitForFetch } from './fetch-dependencies';
 
 const MAX_SUMMARY_DEFER = 5;
 const SUMMARY_DEFER_MS = 60_000;
@@ -28,14 +30,11 @@ export class DigestService {
     private readonly config: ConfigService,
   ) {}
 
-  /** 统计区间默认为「过去 24 小时」，定时链路由 fetch-all 传入精确区间 */
+  /** 沿用当日日报的统计窗口，自动发送去重，人工补发可显式覆盖。 */
   async send(payload: JobPayloads['send-digest']): Promise<DigestResult> {
-    const to = payload.windowTo ? new Date(payload.windowTo) : new Date();
-    const from = payload.windowFrom
-      ? new Date(payload.windowFrom)
-      : new Date(to.getTime() - DEFAULT_DIGEST_WINDOW_HOURS * 60 * 60 * 1000);
-    const target = payload.date ?? dateKey(to);
+    const target = payload.date ?? dateKey();
     const dateOnly = new Date(`${target}T00:00:00.000Z`);
+    const { from, to } = await resolveDigestWindow(this.prisma, target, payload.windowTo ? new Date(payload.windowTo) : undefined);
     const range = formatRange(from, to);
     const settings = await this.settings.resolveAll();
 
@@ -50,10 +49,12 @@ export class DigestService {
       where: { date: dateOnly, status: { in: ['success', 'skipped'] } },
       select: { id: true },
     });
-    if (alreadySent && !payload.test) {
+    if (alreadySent && !payload.test && !payload.force) {
       this.logger.log(`${target} 已有发送记录，跳过推送`);
       return { sent: false, recipients: [], articleCount: 0 };
     }
+
+    await waitForFetch(this.prisma, dateOnly);
 
     const recipients = payload.to?.length ? payload.to : await this.notify.recipients();
     if (recipients.length === 0) {
@@ -76,6 +77,8 @@ export class DigestService {
           subject: `【${target}】无新文章`,
           recipients: recipients.join(', '),
           status: 'skipped',
+          windowFrom: from,
+          windowTo: to,
         },
       });
       this.logger.log(`${range} 没有新文章，跳过推送`);
@@ -149,6 +152,8 @@ export class DigestService {
           recipients: recipients.join(', '),
           status: 'success',
           sentAt: new Date(),
+          windowFrom: from,
+          windowTo: to,
         },
       });
 
@@ -163,6 +168,8 @@ export class DigestService {
           recipients: recipients.join(', '),
           status: 'failed',
           error: message,
+          windowFrom: from,
+          windowTo: to,
         },
       });
       await this.notify.alert(`邮件发送失败（${target}）`, `收件人：${recipients.join(', ')}\n\n原因：${message}`);

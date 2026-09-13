@@ -10,15 +10,17 @@
   "scripts": {
     "build": "turbo run build",
     "typecheck": "turbo run typecheck",
-    "test": "turbo run test",
-    "dev": "turbo run dev --parallel",
+    "test": "vitest run",
+    "dev": "turbo run dev",
     "db:generate": "pnpm --filter @wx/db generate",
     "db:migrate": "pnpm --filter @wx/db migrate",
     "db:studio": "pnpm --filter @wx/db studio",
     "poc:article": "pnpm --filter @wx/wechat poc"
   },
   "devDependencies": {
+    "@types/node": "^22.10.0",
     "turbo": "^2.5.0",
-    "typescript": "^5.6.3"
+    "typescript": "^5.6.3",
+    "vitest": "^3.2.7"
   }
 }

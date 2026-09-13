@@ -88,9 +88,11 @@ model Summary {
   id           String   @id @default(cuid()) @db.VarChar(32)
   /// 日报归属日期（发送当天），实际统计区间见 windowFrom / windowTo
   date         DateTime @db.Date
-  /// 统计区间：从「上次成功产出日报的时刻」到「本次抓取开始时刻」，正常情况是 24 小时
+  /// 统计区间：从上份日报的 windowTo 到本次抓取开始时刻，正常情况是 24 小时。
   windowFrom   DateTime? @db.DateTime(3)
   windowTo     DateTime? @db.DateTime(3)
+  /// 本次日报依赖的抓取任务；重试完成前禁止生成/发送不完整结果。
+  fetchJobIds  Json?
   scope        String   @default("global") @db.VarChar(32)
   accountId    String?  @db.VarChar(32)
   model        String   @db.VarChar(64)
@@ -125,6 +127,8 @@ model SendLog {
   status     String    @db.VarChar(16)
   error      String?   @db.Text
   sentAt     DateTime? @db.DateTime(3)
+  windowFrom DateTime? @db.DateTime(3)
+  windowTo   DateTime? @db.DateTime(3)
   createdAt  DateTime  @default(now()) @db.DateTime(3)
 
   @@index([date])
@@ -159,6 +163,7 @@ model User {
   id           String   @id @default(cuid()) @db.VarChar(32)
   username     String   @unique @db.VarChar(191)
   passwordHash String   @db.VarChar(255)
+  sessionVersion Int    @default(0)
   role         String   @default("member") @db.VarChar(16)
   createdAt    DateTime @default(now()) @db.DateTime(3)
 
@@ -192,7 +197,8 @@ model JobQueue {
   status       String    @default("pending") @db.VarChar(16)
   priority     Int       @default(0)
   runAt        DateTime  @db.DateTime(3)
-  singletonKey String?   @db.VarChar(128)
+  /// 只在 pending/running 期间占用，结束后释放；唯一约束负责并发去重。
+  singletonKey String?   @unique @db.VarChar(128)
   attempts     Int       @default(0)
   maxAttempts  Int       @default(3)
   startedAt    DateTime? @db.DateTime(3)
@@ -203,7 +209,6 @@ model JobQueue {
 
   @@index([status, runAt])
   @@index([name, status])
-  @@index([singletonKey, status])
   @@index([createdAt])
   @@map("job_queue")
 }

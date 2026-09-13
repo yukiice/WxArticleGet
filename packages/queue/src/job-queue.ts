@@ -1,4 +1,4 @@
-import type { JobQueue as JobQueueRow, Prisma, PrismaClient } from '@wx/db';
+import { Prisma, type JobQueue as JobQueueRow, type PrismaClient } from '@wx/db';
 import { nextRunAt } from './cron';
 
 export interface JobQueueLogger {
@@ -29,6 +29,13 @@ export interface JobQueueOptions {
 }
 
 export type JobQueueHandler = (payload: unknown) => Promise<void> | void;
+
+/** 等待上游任务不算执行失败，不消耗业务重试次数。 */
+export class JobDeferredError extends Error {
+  constructor(message: string, readonly delayMs = 30_000) {
+    super(message);
+  }
+}
 
 export const JOB_STATUS = {
   pending: 'pending',
@@ -77,7 +84,7 @@ export class JobQueue {
   private currentRun: Promise<void> = Promise.resolve();
 
   constructor(
-    private readonly prisma: PrismaClient,
+    private readonly prisma: Pick<PrismaClient, 'jobQueue'>,
     options: JobQueueOptions = {},
   ) {
     this.logger = options.logger ?? console;
@@ -91,32 +98,31 @@ export class JobQueue {
 
   /** 入队一个任务；带 singletonKey 且已有同 key 任务在排队/执行时直接复用 */
   async enqueue<T extends string>(name: T, payload?: unknown, options: EnqueueOptions = {}): Promise<string | null> {
-    if (options.singletonKey) {
-      const existing = await this.prisma.jobQueue.findFirst({
-        where: { singletonKey: options.singletonKey, status: { in: [JOB_STATUS.pending, JOB_STATUS.running] } },
-        select: { id: true },
-      });
-      if (existing) {
-        this.logger.warn(`任务已存在，跳过入队 ${name}（${options.singletonKey}）`);
-        return existing.id;
+    const data = {
+      name,
+      payload: (payload ?? {}) as Prisma.InputJsonValue,
+      status: JOB_STATUS.pending,
+      runAt: options.runAt ?? new Date(),
+      singletonKey: options.singletonKey ?? null,
+      maxAttempts: options.maxAttempts ?? DEFAULT_MAX_ATTEMPTS,
+      priority: options.priority ?? 0,
+    };
+    for (;;) {
+      try {
+        const created = await this.prisma.jobQueue.create({ data, select: { id: true } });
+        this.wake();
+        return created.id;
+      } catch (error) {
+        if (!options.singletonKey || !(error instanceof Prisma.PrismaClientKnownRequestError) || error.code !== 'P2002') {
+          throw error;
+        }
+        const existing = await this.prisma.jobQueue.findUnique({
+          where: { singletonKey: options.singletonKey }, select: { id: true },
+        });
+        if (existing) return existing.id;
+        // 冲突的任务可能刚刚完成并释放键，此时重新插入即可。
       }
     }
-
-    const created = await this.prisma.jobQueue.create({
-      data: {
-        name,
-        payload: (payload ?? {}) as Prisma.InputJsonValue,
-        status: JOB_STATUS.pending,
-        runAt: options.runAt ?? new Date(),
-        singletonKey: options.singletonKey ?? null,
-        maxAttempts: options.maxAttempts ?? DEFAULT_MAX_ATTEMPTS,
-        priority: options.priority ?? 0,
-      },
-      select: { id: true },
-    });
-
-    this.wake();
-    return created.id;
   }
 
   // ---------------------------------------------------------------- 消费者
@@ -251,7 +257,7 @@ export class JobQueue {
       // 用 updateMany：任务在运行期间被清理（prune / 手动删记录）时返回 0，而不是抛错打断轮询
       const finished = await this.prisma.jobQueue.updateMany({
         where: { id: job.id },
-        data: { status: JOB_STATUS.done, finishedAt: new Date(), lastError: null },
+        data: { status: JOB_STATUS.done, finishedAt: new Date(), lastError: null, singletonKey: null },
       });
       if (finished.count === 0) {
         this.logger.warn(`任务已完成但记录已被清理，跳过状态回写 ${job.name}（${job.id}）`);
@@ -260,6 +266,19 @@ export class JobQueue {
       }
     } catch (error) {
       const message = describeError(error);
+      if (error instanceof JobDeferredError) {
+        await this.prisma.jobQueue.updateMany({
+          where: { id: job.id },
+          data: {
+            status: JOB_STATUS.pending,
+            startedAt: null,
+            attempts: { decrement: 1 },
+            runAt: new Date(Date.now() + error.delayMs),
+            lastError: message,
+          },
+        });
+        return;
+      }
       if (job.attempts < job.maxAttempts) {
         const delay = this.retryDelayMs * 2 ** Math.max(0, job.attempts - 1);
         const retried = await this.prisma.jobQueue.updateMany({
@@ -279,7 +298,7 @@ export class JobQueue {
       } else {
         const failed = await this.prisma.jobQueue.updateMany({
           where: { id: job.id },
-          data: { status: JOB_STATUS.failed, finishedAt: new Date(), lastError: message },
+          data: { status: JOB_STATUS.failed, finishedAt: new Date(), lastError: message, singletonKey: null },
         });
         if (failed.count === 0) {
           this.logger.error(`任务最终失败且记录已被清理 ${job.name}（${job.id}）：${message}`);
