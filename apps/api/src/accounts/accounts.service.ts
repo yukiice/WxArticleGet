@@ -1,5 +1,5 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
-import { ACCOUNT_STATUS, JOB, type AccountCandidate, type AccountDto, type CreateAccountInput, type UpdateAccountInput } from '@wx/shared';
+import { ACCOUNT_STATUS, JOB, dateKey, type JobPayloads, type AccountCandidate, type AccountDto, type CreateAccountInput, type UpdateAccountInput } from '@wx/shared';
 import { looksLikeUrl, lookupAccountCandidates, resolveAccountFromFeed, type ProviderContext } from '@wx/wechat';
 import type { Account } from '@wx/db';
 import { PrismaService } from '../prisma/prisma.service';
@@ -150,12 +150,44 @@ export class AccountsService {
 
   async triggerFetch(id: string, sinceDays?: number): Promise<{ queued: boolean }> {
     const account = await this.ensureExists(id);
+    const summary = await this.prisma.summary.findFirst({
+      where: { date: new Date(`${dateKey()}T00:00:00.000Z`), scope: 'global' },
+      select: { fetchJobIds: true },
+    });
+    const ids = Array.isArray(summary?.fetchJobIds)
+      ? summary.fetchJobIds.filter((value): value is string => typeof value === 'string')
+      : [];
+    if (ids.length > 0) {
+      const failed = await this.prisma.jobQueue.findFirst({
+        where: { id: { in: ids }, name: JOB.FETCH_ACCOUNT, status: 'failed', payload: { path: '$.accountId', equals: id } },
+      });
+      if (failed) {
+        // 保留任务 ID，让日报对失败任务的依赖能在人工重试成功后解除。
+        await this.prisma.jobQueue.updateMany({
+          where: { id: failed.id, status: 'failed' },
+          data: {
+            status: 'pending',
+            attempts: 0,
+            startedAt: null,
+            finishedAt: null,
+            lastError: null,
+            runAt: new Date(),
+            payload: {
+              ...(failed.payload as JobPayloads['fetch-account']),
+              ...(sinceDays === undefined ? {} : { sinceDays }),
+              manual: true,
+            },
+          },
+        });
+        return { queued: true };
+      }
+    }
     await this.queue.enqueue('fetch-account', {
       accountId: account.id,
       // 不传 sinceDays 时由 worker 取默认窗口（最近 24 小时 / 上次成功之后）
       sinceDays,
       manual: true,
-    });
+    }, { singletonKey: `manual-fetch-${account.id}` });
     return { queued: true };
   }
 

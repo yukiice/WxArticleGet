@@ -21,7 +21,7 @@ function isRetryableStatus(status: number): boolean {
   return status === 408 || status === 429 || status >= 500;
 }
 
-async function request(url: string, options: HttpOptions, binary: boolean): Promise<Response> {
+async function request(url: string, options: HttpOptions): Promise<Response> {
   const retries = options.retries ?? DEFAULT_RETRIES;
   const timeoutMs = options.timeoutMs ?? DEFAULT_TIMEOUT;
   let lastError: unknown;
@@ -32,7 +32,6 @@ async function request(url: string, options: HttpOptions, binary: boolean): Prom
         headers: {
           'User-Agent': options.userAgent ?? WECHAT_MOBILE_UA,
           'Accept-Language': 'zh-CN,zh;q=0.9',
-          ...(binary ? { Accept: 'image/avif,image/webp,image/apng,image/*,*/*;q=0.8' } : {}),
           ...options.headers,
         },
         redirect: 'follow',
@@ -67,18 +66,9 @@ function backoffMs(attempt: number, base?: number): number {
 }
 
 export async function fetchText(url: string, options: HttpOptions = {}): Promise<string> {
-  const response = await request(url, options, false);
+  const response = await request(url, options);
   const buffer = Buffer.from(await response.arrayBuffer());
   return decodeBody(buffer, response.headers.get('content-type') ?? '');
-}
-
-export async function fetchBinary(
-  url: string,
-  options: HttpOptions = {},
-): Promise<{ data: Buffer; contentType: string | null }> {
-  const response = await request(url, options, true);
-  const data = Buffer.from(await response.arrayBuffer());
-  return { data, contentType: response.headers.get('content-type') };
 }
 
 /** 微信页面存在 GBK 编码的历史页面，此处做一次宽松解码 */

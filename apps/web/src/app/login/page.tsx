@@ -4,6 +4,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { Suspense, useState } from 'react';
 import { Button, Card, Field, Input } from '@/components/ui';
 import { endpoints } from '@/lib/api';
+import { loginRedirect } from '@/lib/login-redirect';
 
 function LoginForm() {
   const router = useRouter();
@@ -19,7 +20,7 @@ function LoginForm() {
     setError(null);
     try {
       await endpoints.login({ username, password });
-      router.replace(params.get('next') ?? '/');
+      router.replace(loginRedirect(params.get('next')));
       router.refresh();
     } catch (submitError) {
       setError(submitError instanceof Error ? submitError.message : '登录失败');

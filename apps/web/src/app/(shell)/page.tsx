@@ -18,7 +18,6 @@ export default function HomePage() {
   const [accountId, setAccountId] = useState<string>(() => searchParams.get('accountId') ?? '');
   const [keyword, setKeyword] = useState('');
   const [search, setSearch] = useState('');
-  const [page, setPage] = useState(1);
 
   const params = useMemo(
     () => ({
@@ -26,19 +25,17 @@ export default function HomePage() {
       ...(scope === 'unread' ? { isRead: 'false' as const } : {}),
       ...(accountId ? { accountId } : {}),
       ...(search ? { q: search } : {}),
-      page,
       pageSize: 20,
     }),
-    [scope, accountId, search, page],
+    [scope, accountId, search],
   );
 
-  const { data, isLoading, isFetching } = useArticles(params);
+  const { data, isLoading, isFetchingNextPage, hasNextPage, fetchNextPage } = useArticles(params);
   const { data: accounts } = useAccounts();
   const { data: me } = useMe();
 
-  const items = data?.items ?? [];
-  const total = data?.total ?? 0;
-  const hasMore = items.length < total;
+  const items = data?.pages.flatMap((page) => page.items) ?? [];
+  const total = data?.pages[0]?.total ?? 0;
 
   return (
     <div>
@@ -59,7 +56,6 @@ export default function HomePage() {
                 type="button"
                 onClick={() => {
                   setScope(value);
-                  setPage(1);
                 }}
                 className={cn(
                   'rounded-md px-3 py-1.5 text-[13px] font-medium transition-colors',
@@ -78,7 +74,6 @@ export default function HomePage() {
             onSubmit={(event) => {
               event.preventDefault();
               setSearch(keyword.trim());
-              setPage(1);
             }}
           >
             <SearchIcon className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-zinc-400" />
@@ -97,7 +92,6 @@ export default function HomePage() {
               type="button"
               onClick={() => {
                 setAccountId('');
-                setPage(1);
               }}
               className={cn(
                 'shrink-0 rounded-full border px-3 py-1 text-xs transition-colors',
@@ -114,7 +108,6 @@ export default function HomePage() {
                 type="button"
                 onClick={() => {
                   setAccountId(account.id);
-                  setPage(1);
                 }}
                 className={cn(
                   'shrink-0 rounded-full border px-3 py-1 text-xs transition-colors',
@@ -165,9 +158,9 @@ export default function HomePage() {
         )}
       </div>
 
-      {hasMore ? (
+      {hasNextPage ? (
         <div className="mt-4 flex justify-center px-4 sm:px-0">
-          <Button variant="secondary" onClick={() => setPage((prev) => prev + 1)} loading={isFetching}>
+          <Button variant="secondary" onClick={() => void fetchNextPage()} loading={isFetchingNextPage}>
             加载更多
           </Button>
         </div>

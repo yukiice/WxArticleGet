@@ -25,6 +25,7 @@
 - 常用查询：`(accountId, publishTime)`、`publishTime` 建普通索引
 - `summaries` 的全局记录 `accountId` 为 NULL，MySQL 唯一索引同样不约束 NULL，写入统一「先查询再更新/创建」
 - 图片去重：`(articleId, originalUrlHash)` 唯一索引（MySQL 无法给 `TEXT` 建唯一索引）
+- 排队/运行中的任务由 `job_queue.singletonKey` 唯一索引去重，完成或最终失败后置 NULL 释放，允许后续重跑。
 
 ## 2. Prisma / MySQL 约定
 
@@ -45,8 +46,9 @@ Schema 的唯一事实来源是 `packages/db/prisma/schema.prisma`，这里只�
 
 - 图片原始地址超过 512 字符的场景会被 `TEXT` 兜住，但去重依赖的是 `originalUrlHash`，不受长度影响
 - 时间一致性依赖数据库时区：自建 MySQL 若不在 UTC，`DEFAULT CURRENT_TIMESTAMP` 会与 Prisma 写入差一个时区（compose 里已固定 `--default-time-zone=+00:00`）
-- `summaries.windowFrom/windowTo` 记录该份总结对应的统计区间（UTC 时刻）：有值时按区间聚合文章，为空表示历史数据，此时回退为「过去 24 小时」
-- `summaries.status`：`done` 正常生成 / `empty` 区间内没有新文章（不调用模型）/ `failed` 生成失败；`send_logs.status` 另有 `skipped` 表示当天没有新文章未发信
+- `summaries.windowFrom/windowTo` 记录该份总结对应的统计区间（UTC 时刻），生成与发送共用。`send_logs.windowFrom/windowTo` 保存实际发送/跳过的区间，下份日报接最近已产出记录的 `windowTo`，不用 `sentAt` 推测；无历史窗口时首次回退 24 小时。
+- `summaries.fetchJobIds` 保存本批抓取依赖；全部成功后清空，避免历史任务清理影响重跑。`summaries.status`：`pending` 已排期 / `done` 正常生成 / `empty` 区间内没有新文章（不调用模型）/ `failed` 生成失败；`send_logs.status` 另有 `skipped` 表示当天没有新文章未发信。
+- `users.sessionVersion` 随密码修改原子递增，JWT 保存该版本。每次鉴权核对账号是否仍存在及版本是否一致，旧会话不能继续访问。
 
 ## 3. API 草案
 
@@ -61,7 +63,7 @@ Schema 的唯一事实来源是 `packages/db/prisma/schema.prisma`，这里只�
 | --- | --- | --- |
 | POST | `/api/auth/login` | 单用户登录，写入 HttpOnly Cookie |
 | POST | `/api/auth/logout` | 退出登录 |
-| POST | `/api/auth/password` | 修改当前登录账号密码（校验旧密码） |
+| POST | `/api/auth/password` | 修改当前登录账号密码（校验旧密码，使该账号所有旧会话失效） |
 | GET | `/api/auth/me` | 获取当前会话状态（含 `role`） |
 | GET | `/api/auth/users` | 账号列表（**仅管理员**） |
 | POST | `/api/auth/users` | 添加内部账号，可指定 `role`：`admin` / `member`（**仅管理员**） |
@@ -100,7 +102,7 @@ Schema 的唯一事实来源是 `packages/db/prisma/schema.prisma`，这里只�
 | POST | `/api/email/recipients` | 新增收件人 |
 | DELETE | `/api/email/recipients/:id` | 删除收件人 |
 | POST | `/api/email/test` | 测试发送 |
-| POST | `/api/email/send` | 手动触发当日发送 |
+| POST | `/api/email/send` | 手动发送/补发指定日期，复用当日统计窗口 |
 
 ### 3.5 系统与日志
 
@@ -120,7 +122,7 @@ Schema 的唯一事实来源是 `packages/db/prisma/schema.prisma`，这里只�
 | `fetch-account` | `fetch-all` 派发 / 手动 | `accountId` + 窗口 |
 | `process-article` | `fetch-account` 派发 | `urlHash` |
 | `summarize-day` | 每日 cron / 手动 | `date` |
-| `send-digest` | 每日 cron / 手动 | `date` + 收件人集合 |
+| `send-digest` | 每日 cron / 手动 | 自动按 `date` 去重；人工补发允许重发 |
 | `sync-catalog` | 每日 03:00 cron / worker 启动时过期补跑 / 手动 | `source` 维度 + `lastSeenAt` |
 
 失败策略：指数退避重试（默认 3 次，间隔 30s 起步），超限标记 failed 并保留错误信息；`running` 超过 30 分钟未结束视为进程崩溃，自动回收重跑；`done` / `failed` 记录默认保留 7 天。

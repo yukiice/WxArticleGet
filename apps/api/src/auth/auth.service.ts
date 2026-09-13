@@ -16,6 +16,7 @@ import { hashPassword, verifyPassword } from './password';
 export interface SessionPayload {
   sub: string;
   username: string;
+  version: number;
 }
 
 @Injectable()
@@ -58,7 +59,8 @@ export class AuthService implements OnModuleInit {
   /** 读取当前账号角色（管理员判定以此为准，避免 JWT 里的旧信息过期） */
   async roleOf(userId: string): Promise<string> {
     const user = await this.prisma.user.findUnique({ where: { id: userId }, select: { role: true } });
-    return user?.role ?? USER_ROLE.member;
+    if (!user) throw new UnauthorizedException('账号已被删除，请重新登录');
+    return user.role;
   }
 
   async listUsers(): Promise<UserDto[]> {
@@ -126,18 +128,26 @@ export class AuthService implements OnModuleInit {
       throw new UnauthorizedException('用户名或密码错误');
     }
 
-    const token = await this.jwt.signAsync({ sub: user.id, username: user.username } satisfies SessionPayload, {
+    const token = await this.jwt.signAsync({ sub: user.id, username: user.username, version: user.sessionVersion } satisfies SessionPayload, {
       expiresIn: '30d',
     });
     return { token, username: user.username, role: user.role };
   }
 
   async verify(token: string): Promise<SessionPayload | null> {
+    let payload: SessionPayload;
     try {
-      return await this.jwt.verifyAsync<SessionPayload>(token);
+      payload = await this.jwt.verifyAsync<SessionPayload>(token);
     } catch {
       return null;
     }
+    if (!payload || typeof payload.sub !== 'string' || !Number.isInteger(payload.version)) return null;
+    const user = await this.prisma.user.findUnique({
+      where: { id: payload.sub },
+      select: { id: true, username: true, sessionVersion: true },
+    });
+    if (!user || user.sessionVersion !== payload.version) return null;
+    return { sub: user.id, username: user.username, version: user.sessionVersion };
   }
 
   async changePassword(userId: string, currentPassword: string, newPassword: string): Promise<{ ok: boolean }> {
@@ -148,7 +158,7 @@ export class AuthService implements OnModuleInit {
 
     await this.prisma.user.update({
       where: { id: user.id },
-      data: { passwordHash: hashPassword(newPassword) },
+      data: { passwordHash: hashPassword(newPassword), sessionVersion: { increment: 1 } },
     });
     return { ok: true };
   }

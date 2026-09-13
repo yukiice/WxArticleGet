@@ -1,16 +1,16 @@
 import OpenAI from 'openai';
 import { Injectable, Logger } from '@nestjs/common';
 import {
-  DEFAULT_DIGEST_WINDOW_HOURS,
   dateKey,
   formatDateTime,
   formatRange,
   type JobPayloads,
 } from '@wx/shared';
-import type { Article } from '@wx/db';
+import { resolveDigestWindow, type Article } from '@wx/db';
 import { PrismaService } from '../prisma/prisma.service';
 import { SettingsService } from '../settings/settings.service';
 import { NotifyService } from './notify.service';
+import { waitForFetch } from './fetch-dependencies';
 
 const PROMPT_VERSION = 'v2';
 
@@ -53,14 +53,12 @@ export class SummaryService {
     private readonly notify: NotifyService,
   ) {}
 
-  /** 统计区间默认为「过去 24 小时」，定时链路由 fetch-all 传入精确区间 */
+  /** 所有入口优先复用已保存的统计窗口，并等待该批抓取重试完成。 */
   async run(payload: JobPayloads['summarize-day']): Promise<SummaryRunResult> {
-    const to = payload.windowTo ? new Date(payload.windowTo) : new Date();
-    const from = payload.windowFrom
-      ? new Date(payload.windowFrom)
-      : new Date(to.getTime() - DEFAULT_DIGEST_WINDOW_HOURS * 60 * 60 * 1000);
-    const target = payload.date ?? dateKey(to);
+    const target = payload.date ?? dateKey();
     const dateOnly = new Date(`${target}T00:00:00.000Z`);
+    await waitForFetch(this.prisma, dateOnly);
+    const { from, to } = await resolveDigestWindow(this.prisma, target, payload.windowTo ? new Date(payload.windowTo) : undefined);
     const range = formatRange(from, to);
     const settings = await this.settings.resolveAll();
 

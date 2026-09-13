@@ -89,34 +89,17 @@ export function fetchWindowStart(
 /**
  * 日报窗口：
  * - 结束时间取「本次抓取开始时刻」（抓取覆盖到哪，日报就统计到哪，避免同一篇文章漏掉或重复）
- * - 开始时间取「上次成功产出日报的时刻」与「cutoff 前 windowHours」中更早的那个，
- *   所以正常情况就是过去 24 小时，某天没发成功时会自动补上一段。
+ * - 开始时间接上份日报的统计截止点；首次运行才回退 windowHours。
+ *   不能用发信时间代替统计截止点，也不能因调度漂移制造遗漏或重叠。
  */
 export function digestWindow(
-  lastDigestAt: Date | null,
+  previousWindowTo: Date | null,
   cutoff: Date,
   windowHours: number = DEFAULT_DIGEST_WINDOW_HOURS,
 ): { from: Date; to: Date } {
   const byWindow = new Date(cutoff.getTime() - windowHours * 60 * 60 * 1000);
-  const from = lastDigestAt && lastDigestAt < byWindow ? lastDigestAt : byWindow;
+  const from = previousWindowTo ?? byWindow;
   return { from, to: cutoff };
-}
-
-/**
- * 归属到某个自然日的日报窗口：截止点 = 该日结束（Asia/Shanghai 24:00），
- * 起点 = 该日结束时刻之前最近一次成功产出日报的时刻（没发成功则回退 24 小时）。
- *
- * 自动链路（fetch-all）用当下时刻当截止点，手动补生成/重发历史某天用日边界，
- * 两者口径一致：同一天算出来的区间相同，不会把后一天的文章算进来。
- */
-export function resolveDailyWindow(
-  dateKeyValue: string,
-  lastDigestAt: Date | null,
-  options: { windowHours?: number; timeZone?: string; cutoff?: Date } = {},
-): { from: Date; to: Date; dateValue: string } {
-  const end = options.cutoff ?? dayRange(dateKeyValue, options.timeZone).end;
-  const { from, to } = digestWindow(lastDigestAt, end, options.windowHours);
-  return { from, to, dateValue: dateKeyValue };
 }
 
 /** 人类可读的时间范围，如「09-12 08:30 → 09-13 08:30」 */

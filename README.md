@@ -50,12 +50,14 @@ docker compose up -d mysql       # 只起数据库
 pnpm install
 pnpm db:generate
 pnpm db:migrate
-pnpm dev                         # 同时启动 web(3000) / api(3001) / worker
+pnpm dev                         # 先编译内部依赖，再启动 web(3000) / api(3001) / worker
 ```
 
 访问 http://localhost:3000 ，使用 `.env` 中的 `ADMIN_USERNAME` / `ADMIN_PASSWORD` 登录。
 
 首次启动 API 时会用 `ADMIN_USERNAME` + `ADMIN_PASSWORD` 自动创建账号，之后修改环境变量不会覆盖已有密码。
+
+`DATA_DIR` 的相对路径统一以仓库根目录为基准；默认图片写入根目录 `data/`，API 与 worker 读取同一目录。
 
 ## 生产部署
 
@@ -70,6 +72,14 @@ docker compose -f docker-compose.yml up -d   # 首次会先跑 migrate 服务建
 反向代理建议：`/` 指向 `web:3000`；`/api` 与 `/files` 交给 web 容器即可（Next 已配置 rewrite 转发到 api），也可以直接指向 `api:3001`。
 
 务必启用 HTTPS：PWA「添加到主屏」与 Cookie 安全都依赖它。
+
+### 从旧版本升级
+
+本次包含数据库迁移：会话版本、日报抓取依赖、发送日志统计窗口及队列唯一键。先停止旧 API / worker，再运行 `pnpm db:migrate` 并启动新版本；Docker 部署先停止旧应用服务，再构建新镜像并执行 `docker compose up -d`，由 `migrate` 服务执行迁移。不要让旧 worker 在迁移过程中继续写队列。
+
+升级后需重新登录；之后修改密码或删除账号会立即使该账号的旧会话失效。迁移会从已有总结回填发送日志的统计窗口，并保留已有队列任务。
+
+宿主机使用相对 `DATA_DIR` 时，请将旧 `apps/worker/data/` 下的 `images/`、`covers/` 合并到仓库根目录 `data/`，或改用指向原目录的绝对路径；Docker 的 `/data` 卷不受影响。静态文件服务只开放图片路径，旧 HTML / SVG 文件不会再对外提供。
 
 ## 数据源说明
 
@@ -104,17 +114,17 @@ pnpm poc:article "粘贴一篇公众号文章链接" --download-images
 | 同步 RSS 目录 | `CATALOG_CRON` | 每天 03:00 |
 | 发送日报邮件 | 管理后台「发送时间」 | 09:00（兜底 09:30） |
 
-链路是串起来的：08:30 抓完所有账号后，立刻按「上次成功发出日报的时刻 → 本次抓取开始时刻」算出统计区间（正常就是过去 24 小时），把总结和发送排进队列，09:00 准点发信。`SUMMARY_CRON` 与 09:30 那次 `send-digest` 只是兜底，正常链路跑通时不会重复发送。
+08:30 的 `fetch-all` 将统计窗口、账号抓取任务和日报排期一起落库。窗口从上份成功或无新文章日报的统计截止点接到本次抓取开始时刻，首次回退 24 小时。总结和邮件都等待本批抓取及重试成功后再执行；到发送时间仍未抓完时会顺延。`SUMMARY_CRON` 与 09:30 的发送兜底复用同一窗口和依赖，自动发送仍按日期去重。
 
-抓取窗口：优先取最近 24 小时；如果上次成功产出日报更早（比如服务停了几天），就从上次成功的时间点补抓，最多回溯 7 天；首次接入用 `FIRST_RUN_LOOKBACK_DAYS`（默认 3 天）。
+抓取窗口：优先取最近 24 小时；上次完整抓取成功更早或日报窗口更早时向前补抓，最多回溯 7 天；首次接入用 `FIRST_RUN_LOOKBACK_DAYS`（默认 3 天）。单篇临时失败会使本次任务失败并重试，不会推进账号的成功时间；明确删除或撤回的文章按不可用跳过。
 
-后台的「立即生成总结 / 立即发送邮件」按同一天的口径计算区间（截止点取当天 24:00，起点接上次成功发送的时刻），补历史日期不会把后一天的文章算进来。
+后台的「立即生成总结 / 立即发送邮件」优先沿用当日已保存的统计窗口；没有窗口时截止到该日 24:00，起点接之前日报的统计截止点（无记录则回退 24 小时）。「立即发送」支持在成功或无新文章后人工补发。如果抓取已最终失败，先对失败账号「立即抓取」，成功后再重新生成总结并发送。
 
 修改「发送时间」后需要重启 worker 才会重新注册计划：`docker compose restart worker`。
 
 ## 运维提示
 
-- 图片本地化失败时会保留原始地址，日志中可见；重新执行 `process-article` 任务可重试。
+- 图片下载会校验每次重定向的公网 IP，并固定实际连接 IP；仅保存签名及 MIME 符合要求的 PNG / JPEG / GIF / WebP，单张最多 10 MB。失败时保留原始地址，日志中可见；重新执行 `process-article` 任务可重试。
 - 数据库备份：`docker compose exec mysql mysqldump -uwx -pwx --single-transaction --default-character-set=utf8mb4 wx_article | gzip > backup.sql.gz`
 - 图片文件位于 `appdata` 卷，需一并备份。
 
@@ -122,6 +132,6 @@ pnpm poc:article "粘贴一篇公众号文章链接" --download-images
 
 ```bash
 pnpm typecheck   # 全量类型检查
-pnpm test        # 单元测试（正文解析等）
+pnpm test        # 安全、队列、抓取/日报链路和正文解析测试（外部服务使用替身）
 pnpm build       # 全量构建
 ```

@@ -1,6 +1,7 @@
 import { PrismaClient } from '@prisma/client';
 
 export * from '@prisma/client';
+export * from './digest-window';
 
 const globalForPrisma = globalThis as unknown as { prisma?: PrismaClient };
 
