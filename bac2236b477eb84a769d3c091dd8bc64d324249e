@@ -1,0 +1,68 @@
+apps/worker/src/queue/job-runner.service.ts
+  18b7e31bb981bbf1 4-14,75,98-112
+apps/api/src/mail/mail.service.ts
+  18b7e31bb981bbf1 7,109-115,119-128
+docs/TECH_DESIGN.md
+  18b7e31bb981bbf1 96-97
+packages/shared/src/date.ts
+  18b7e31bb981bbf1 105-121
+apps/api/src/summaries/summaries.service.ts
+  18b7e31bb981bbf1 2,43-48,51-64
+README.md
+  18b7e31bb981bbf1 111-112
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.2.8-ntes.9",
+  "base_commit_sha": "bac2236b477eb84a769d3c091dd8bc64d324249e",
+  "prompts": {
+    "18b7e31bb981bbf1": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a08f92-c0f1-7032-a1e1-1ac9c0848c32",
+        "model": "deepseek-v4.1-flash"
+      },
+      "human_author": "yukiice",
+      "messages": [],
+      "total_additions": 102,
+      "total_deletions": 22,
+      "accepted_lines": 92,
+      "overriden_lines": 0,
+      "per_file_stats": {
+        "docs/TECH_DESIGN.md": {
+          "additions": 2,
+          "deletions": 1,
+          "accepted_lines": 2
+        },
+        "apps/api/src/summaries/summaries.service.ts": {
+          "additions": 22,
+          "deletions": 2,
+          "accepted_lines": 22
+        },
+        "apps/worker/src/queue/job-runner.service.ts": {
+          "additions": 33,
+          "deletions": 12,
+          "accepted_lines": 29
+        },
+        "README.md": {
+          "additions": 2,
+          "accepted_lines": 2
+        },
+        "apps/web/tsconfig.tsbuildinfo": {
+          "additions": 1,
+          "deletions": 1
+        },
+        "packages/shared/src/date.ts": {
+          "additions": 22,
+          "deletions": 5,
+          "accepted_lines": 17
+        },
+        "apps/api/src/mail/mail.service.ts": {
+          "additions": 20,
+          "deletions": 1,
+          "accepted_lines": 20
+        }
+      }
+    }
+  }
+}
