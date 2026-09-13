@@ -248,16 +248,21 @@ export class JobQueue {
         this.expireMs,
         `任务执行超过 ${describeDuration(this.expireMs)}未结束`,
       );
-      await this.prisma.jobQueue.update({
+      // 用 updateMany：任务在运行期间被清理（prune / 手动删记录）时返回 0，而不是抛错打断轮询
+      const finished = await this.prisma.jobQueue.updateMany({
         where: { id: job.id },
         data: { status: JOB_STATUS.done, finishedAt: new Date(), lastError: null },
       });
-      this.logger.log(`任务完成 ${job.name}（${Date.now() - startedAt}ms）`);
+      if (finished.count === 0) {
+        this.logger.warn(`任务已完成但记录已被清理，跳过状态回写 ${job.name}（${job.id}）`);
+      } else {
+        this.logger.log(`任务完成 ${job.name}（${Date.now() - startedAt}ms）`);
+      }
     } catch (error) {
       const message = describeError(error);
       if (job.attempts < job.maxAttempts) {
         const delay = this.retryDelayMs * 2 ** Math.max(0, job.attempts - 1);
-        await this.prisma.jobQueue.update({
+        const retried = await this.prisma.jobQueue.updateMany({
           where: { id: job.id },
           data: {
             status: JOB_STATUS.pending,
@@ -266,13 +271,21 @@ export class JobQueue {
             lastError: message,
           },
         });
-        this.logger.warn(`任务失败将重试 ${job.name}（第 ${job.attempts}/${job.maxAttempts} 次）：${message}`);
+        if (retried.count === 0) {
+          this.logger.warn(`任务失败但记录已被清理，不再重试 ${job.name}（${job.id}）：${message}`);
+        } else {
+          this.logger.warn(`任务失败将重试 ${job.name}（第 ${job.attempts}/${job.maxAttempts} 次）：${message}`);
+        }
       } else {
-        await this.prisma.jobQueue.update({
+        const failed = await this.prisma.jobQueue.updateMany({
           where: { id: job.id },
           data: { status: JOB_STATUS.failed, finishedAt: new Date(), lastError: message },
         });
-        this.logger.error(`任务最终失败 ${job.name}：${message}`);
+        if (failed.count === 0) {
+          this.logger.error(`任务最终失败且记录已被清理 ${job.name}（${job.id}）：${message}`);
+        } else {
+          this.logger.error(`任务最终失败 ${job.name}：${message}`);
+        }
       }
     } finally {
       this.activeJobId = null;
