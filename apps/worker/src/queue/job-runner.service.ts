@@ -102,9 +102,13 @@ export class JobRunnerService {
    * 截止点取该日边界，且不把该日自己的发送记录算进起点，保证同一天算出来的区间一致。
    */
   async resolveWindow(target: string, cutoff?: Date): Promise<{ from: Date; to: Date }> {
-    const dayStart = dayRange(target).start;
     const lastProduced = await this.prisma.sendLog.findFirst({
-      where: { status: { in: ['success', 'skipped'] }, createdAt: { lt: dayStart } },
+      where: {
+        status: { in: ['success', 'skipped'] },
+        // 自动链路：起点是「这个截止时刻之前」最近一次产出，不能额外要求它早于当天 00:00，
+        // 否则每天 08:30 都会把前一天 09:00 那次最近的发送记录排除掉，区间从 24 小时膨胀成 39 小时
+        ...(cutoff ? {} : { createdAt: { lt: dayRange(target).start } }),
+      },
       orderBy: { createdAt: 'desc' },
       select: { sentAt: true, createdAt: true },
     });
