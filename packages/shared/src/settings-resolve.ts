@@ -81,7 +81,7 @@ export function resolveSettings(stored: StoredSettings, env: EnvReader): Resolve
     },
     digest: {
       enabled: bool(digest.enabled) ?? true,
-      sendTime: str(digest.sendTime) ?? '08:00',
+      sendTime: str(digest.sendTime) ?? '09:00',
       maxArticles: num(digest.maxArticles) ?? 20,
       includeDigest: bool(digest.includeDigest) ?? true,
     },

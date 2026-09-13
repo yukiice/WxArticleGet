@@ -30,7 +30,8 @@ export class SummariesService {
 
   async recent(limit = 30): Promise<SummaryDto[]> {
     const summaries = await this.prisma.summary.findMany({
-      where: { scope: 'global', status: 'done' },
+      // 包含 status = 'empty'（当天没有新文章）的日子，方便回到历史查看
+      where: { scope: 'global', status: { in: ['done', 'empty'] } },
       orderBy: { date: 'desc' },
       take: limit,
     });
@@ -48,6 +49,8 @@ function toDto(summary: Summary): SummaryDto {
   return {
     id: summary.id,
     date: summary.date.toISOString().slice(0, 10),
+    windowFrom: summary.windowFrom?.toISOString() ?? null,
+    windowTo: summary.windowTo?.toISOString() ?? null,
     scope: summary.scope,
     accountId: summary.accountId,
     model: summary.model,

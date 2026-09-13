@@ -45,6 +45,8 @@ Schema 的唯一事实来源是 `packages/db/prisma/schema.prisma`，这里只�
 
 - 图片原始地址超过 512 字符的场景会被 `TEXT` 兜住，但去重依赖的是 `originalUrlHash`，不受长度影响
 - 时间一致性依赖数据库时区：自建 MySQL 若不在 UTC，`DEFAULT CURRENT_TIMESTAMP` 会与 Prisma 写入差一个时区（compose 里已固定 `--default-time-zone=+00:00`）
+- `summaries.windowFrom/windowTo` 记录该份总结对应的统计区间（UTC 时刻）：有值时按区间聚合文章，为空表示历史数据，此时回退为「过去 24 小时」
+- `summaries.status`：`done` 正常生成 / `empty` 区间内没有新文章（不调用模型）/ `failed` 生成失败；`send_logs.status` 另有 `skipped` 表示当天没有新文章未发信
 
 ## 3. API 草案
 

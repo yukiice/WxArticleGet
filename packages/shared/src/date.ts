@@ -1,4 +1,10 @@
-import { DEFAULT_TIMEZONE } from './constants';
+import {
+  DEFAULT_DIGEST_WINDOW_HOURS,
+  DEFAULT_FETCH_WINDOW_HOURS,
+  DEFAULT_LOOKBACK_DAYS,
+  DEFAULT_TIMEZONE,
+  MAX_FETCH_LOOKBACK_DAYS,
+} from './constants';
 
 /** 返回指定时区下的自然日 key，格式 YYYY-MM-DD */
 export function dateKey(date: Date = new Date(), timeZone: string = DEFAULT_TIMEZONE): string {
@@ -54,3 +60,59 @@ export function formatDateTime(date: Date | string, timeZone: string = DEFAULT_T
   }).format(value);
 }
 
+/**
+ * 抓取窗口起点：
+ * - 常规：最近 windowHours（默认 24 小时）
+ * - 上次成功抓取更早（抓取失败/停机）：从上次成功时刻开始补，最多回溯 maxDays
+ * - 首次接入（从未成功）：回溯 firstRunDays 天
+ */
+export function fetchWindowStart(
+  lastSuccessAt: Date | null,
+  options: { windowHours?: number; firstRunDays?: number; maxDays?: number } = {},
+  now: Date = new Date(),
+): Date {
+  const windowHours = options.windowHours ?? DEFAULT_FETCH_WINDOW_HOURS;
+  const maxDays = options.maxDays ?? MAX_FETCH_LOOKBACK_DAYS;
+  const floor = new Date(now.getTime() - maxDays * 24 * 60 * 60 * 1000);
+
+  if (!lastSuccessAt) {
+    const firstRunDays = options.firstRunDays ?? DEFAULT_LOOKBACK_DAYS;
+    const first = new Date(now.getTime() - firstRunDays * 24 * 60 * 60 * 1000);
+    return first < floor ? floor : first;
+  }
+
+  const windowStart = new Date(now.getTime() - windowHours * 60 * 60 * 1000);
+  const start = lastSuccessAt < windowStart ? lastSuccessAt : windowStart;
+  return start < floor ? floor : start;
+}
+
+/**
+ * 日报窗口：
+ * - 结束时间取「本次抓取开始时刻」（抓取覆盖到哪，日报就统计到哪，避免同一篇文章漏掉或重复）
+ * - 开始时间取「上次成功产出日报的时刻」与「cutoff 前 windowHours」中更早的那个，
+ *   所以正常情况就是过去 24 小时，某天没发成功时会自动补上一段。
+ */
+export function digestWindow(
+  lastDigestAt: Date | null,
+  cutoff: Date,
+  windowHours: number = DEFAULT_DIGEST_WINDOW_HOURS,
+): { from: Date; to: Date } {
+  const byWindow = new Date(cutoff.getTime() - windowHours * 60 * 60 * 1000);
+  const from = lastDigestAt && lastDigestAt < byWindow ? lastDigestAt : byWindow;
+  return { from, to: cutoff };
+}
+
+/** 人类可读的时间范围，如「09-12 08:30 → 09-13 08:30」 */
+export function formatRange(from: Date, to: Date, timeZone: string = DEFAULT_TIMEZONE): string {
+  const formatter = new Intl.DateTimeFormat('en-CA', {
+    timeZone,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: false,
+  });
+  const label = (value: Date): string => formatter.format(value).replace(',', '').slice(5);
+  return `${label(from)} → ${label(to)}`;
+}

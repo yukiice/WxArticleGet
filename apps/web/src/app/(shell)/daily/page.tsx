@@ -6,6 +6,7 @@ import { SparkIcon } from '@/components/icons';
 import { Markdown } from '@/components/markdown';
 import { Badge, Button, Card, EmptyState, Spinner } from '@/components/ui';
 import { isAdminRole } from '@/components/nav-shell';
+import { formatRange } from '@wx/shared';
 import { useMe, useRunSummary, useSummaries } from '@/lib/queries';
 import { cn, todayKey } from '@/lib/utils';
 
@@ -53,6 +54,12 @@ export default function DailyPage() {
               <span>{summary.model}</span>
               <span aria-hidden>·</span>
               <span>{summary.articleCount} 篇</span>
+              {summary.windowFrom && summary.windowTo ? (
+                <>
+                  <span aria-hidden>·</span>
+                  <span>{formatRange(new Date(summary.windowFrom), new Date(summary.windowTo))}</span>
+                </>
+              ) : null}
               {summary.tokenIn + summary.tokenOut > 0 ? (
                 <>
                   <span aria-hidden>·</span>
@@ -63,6 +70,18 @@ export default function DailyPage() {
               ) : null}
             </div>
             <Markdown content={summary.contentMd} />
+          </Card>
+        ) : summary && summary.status === 'empty' ? (
+          <Card className="p-5">
+            <div className="flex items-center gap-2 text-sm text-zinc-600 dark:text-zinc-300">
+              <SparkIcon className="size-4 text-zinc-400" />
+              <span>这个时间段没有新文章</span>
+            </div>
+            {summary.windowFrom && summary.windowTo ? (
+              <div className="mt-2 text-xs text-zinc-400">
+                统计区间 {formatRange(new Date(summary.windowFrom), new Date(summary.windowTo))}
+              </div>
+            ) : null}
           </Card>
         ) : (
           <Card>
@@ -104,7 +123,9 @@ export default function DailyPage() {
                 >
                   <span className="text-sm font-medium text-zinc-800 dark:text-zinc-200">{item.date}</span>
                   <span className="flex items-center gap-2">
-                    <span className="text-xs text-zinc-400">{item.articleCount} 篇</span>
+                    <span className="text-xs text-zinc-400">
+                      {item.status === 'empty' ? '无更新' : `${item.articleCount} 篇`}
+                    </span>
                     {item.date === todayKey() ? <Badge tone="brand">今天</Badge> : null}
                   </span>
                 </button>

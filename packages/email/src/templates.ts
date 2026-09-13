@@ -12,6 +12,8 @@ export interface DigestArticle {
 
 export interface DigestTemplateData {
   date: string;
+  /** 统计区间说明，如「09-12 08:30 → 09-13 08:30」 */
+  rangeLabel?: string | null;
   summaryMarkdown?: string | null;
   summaryModel?: string | null;
   articles: DigestArticle[];
@@ -106,10 +108,17 @@ export function renderDigestEmail(data: DigestTemplateData): RenderedMail {
         <table role="presentation" width="640" cellpadding="0" cellspacing="0" style="max-width:640px;width:100%;background:#ffffff;border-radius:12px;overflow:hidden;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI','PingFang SC','Hiragino Sans GB','Microsoft YaHei',sans-serif;">
           <tr>
             <td style="padding:24px 24px 12px;">
-              <div style="font-size:20px;font-weight:700;color:#111827;">今日公众号文章</div>
+              <div style="font-size:20px;font-weight:700;color:#111827;">公众号文章日报</div>
               <div style="font-size:13px;color:#6b7280;margin-top:6px;">${escapeHtml(data.date)} · 共 ${
                 articles.length
               } 篇</div>
+              ${
+                data.rangeLabel
+                  ? `<div style="font-size:12px;color:#9ca3af;margin-top:4px;">统计区间 ${escapeHtml(
+                      data.rangeLabel,
+                    )}</div>`
+                  : ''
+              }
             </td>
           </tr>
           ${summaryBlock}
@@ -129,7 +138,7 @@ export function renderDigestEmail(data: DigestTemplateData): RenderedMail {
 </html>`;
 
   const textLines = [
-    `今日公众号文章 ${data.date}（共 ${articles.length} 篇）`,
+    `公众号文章 ${data.date}（共 ${articles.length} 篇）${data.rangeLabel ? ` · 统计区间 ${data.rangeLabel}` : ''}`,
     '',
     ...(data.summaryMarkdown ? ['【AI 总结】', data.summaryMarkdown, ''] : []),
     ...articles.map(

@@ -92,9 +92,11 @@ interface ArticleSourceProvider {
 
 ### 4.4 AI 每日总结
 
-- 任务：按自然日（Asia/Shanghai）聚合当日新文章，生成一份 Markdown 总结
+- 任务：按统计区间聚合文章（正常为过去 24 小时，首尾相接不重不漏），生成一份 Markdown 总结
+- 区间来源：`fetch-all` 按「上次成功发出日报的时刻 → 本次抓取开始时刻」计算后随任务下发，落库在 `summaries.windowFrom/windowTo`；手动触发时默认回退为过去 24 小时
 - 调用：openai SDK + `baseURL: https://api.deepseek.com`，模型 `deepseek-chat`
 - prompt 模板版本化落库（`summaries.promptVer`），记录 token 消耗
+- 区间内没有新文章时不调用模型，写一条 `status = empty` 的记录供后台与阅读端查看
 - 超长文章先截断（保留首尾），失败由队列重试，最终失败则当日总结标记 failed 并在后台可见
 
 ### 4.5 邮件推送
@@ -103,17 +105,20 @@ interface ArticleSourceProvider {
 - 模板：手写 table 布局 HTML，不引入 React 运行时依赖，正文 < 102KB
 - 发送：nodemailer，`smtp.163.com:465`，`from` 与登录账号一致
 - 支持「测试发送」；每次发送写 `send_logs`，失败保留错误信息并告警
-- 当日抓取为 0 篇时改为发送告警邮件，不推送空日报
+- 区间内 0 篇属于正常情况：不发邮件也不告警，只写一条 `status = skipped` 的发送记录
+- 邮件正文显示统计区间（如「09-13 08:30 — 09-14 08:30」）；AI 总结尚未生成完时任务顺延重试（最多 5 次 × 60s），避免发出没有总结的日报
 
 ### 4.6 调度与任务
 
 - 队列就是 MySQL 的 `job_queue` 表（`packages/queue`）：API 侧只写库入队，worker 侧每 3s 轮询认领并串行执行
 - 语义对齐原 pg-boss 方案：延迟执行、`singletonKey` 去重、失败按 2^n 退避重试（默认 3 次）、`running` 超时回收（默认 30 分钟）、历史任务自动清理（默认 7 天）
-- worker 进程内注册 cron：`sync-catalog` 03:00 / `fetch-all` 07:00 / `summarize-day` 07:30 / `send-digest` 邮件发送时间；重启后按最新配置重新注册
-- 任务链路：`fetch-all` -> 账号抓取（`fetch-account`）-> 单篇处理（`process-article`）-> 当日总结 -> 邮件发送
+- worker 进程内注册 cron：`sync-catalog` 03:00 / `fetch-all` 08:30 / `summarize-day` 08:45（兜底）/ `send-digest` 邮件发送时间（默认 09:00）+ 30 分钟兜底；重启后按最新配置重新注册
+- 任务链路：`fetch-all`（算区间 + 派发抓取 + 排期）-> 账号抓取（`fetch-account`）-> 单篇处理（`process-article`）-> `summarize-day` -> `send-digest`（按发送时间延时入队）
+- 抓取窗口：`fetchWindowStart()` 取「上次成功抓取时间 → 现在」，正常为 24 小时；上次成功更早则从该时间点补抓，上限 7 天；首次接入用 `FIRST_RUN_LOOKBACK_DAYS`
+- 发送去重：`send-digest` 发现当天已有 `success` / `skipped` 记录时直接跳过，兜底 cron 与重复触发都不会重复发信
 - 任务幂等：文章维度用 `urlHash` 作为 unique key；抓取任务可重复触发不产生脏数据
 - 后台「立即抓取 / 立即生成总结 / 立即发送邮件」复用同一套任务
-- 连续失败或当日抓取 0 篇 -> 触发告警邮件
+- 抓取失败、LLM 失败等真异常才会触发告警邮件
 
 ### 4.7 阅读端与管理后台
 

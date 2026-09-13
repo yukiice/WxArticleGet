@@ -2,8 +2,18 @@ export interface JobPayloads {
   'fetch-all': { date?: string };
   'fetch-account': { accountId: string; sinceDays?: number; manual?: boolean; urls?: string[] };
   'process-article': { articleId: string };
-  'summarize-day': { date?: string; force?: boolean };
-  'send-digest': { date?: string; to?: string[]; test?: boolean };
+  'summarize-day': { date?: string; force?: boolean; windowFrom?: string; windowTo?: string };
+  'send-digest': {
+    date?: string;
+    to?: string[];
+    test?: boolean;
+    windowFrom?: string;
+    windowTo?: string;
+    /** 定时任务触发的发送：当天已经发过（含「无新文章」跳过）就不再重复发 */
+    scheduled?: boolean;
+    /** 总结还没生成完时的顺延次数，内部使用 */
+    deferCount?: number;
+  };
   'send-alert': { subject: string; message: string };
   'sync-catalog': { source?: string };
 }
@@ -91,6 +101,9 @@ export interface ArticleDetailDto extends ArticleListItemDto {
 export interface SummaryDto {
   id: string;
   date: string;
+  /** 统计区间（正常是 24 小时），用于在后台/日报页说明这份总结覆盖了哪段时间 */
+  windowFrom: string | null;
+  windowTo: string | null;
   scope: string;
   accountId: string | null;
   model: string;

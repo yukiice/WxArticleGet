@@ -16,6 +16,15 @@ export const DEFAULT_TIMEZONE = 'Asia/Shanghai';
 
 export const DEFAULT_LOOKBACK_DAYS = 3;
 
+/** 抓取窗口：常规情况下只看最近 24 小时 */
+export const DEFAULT_FETCH_WINDOW_HOURS = 24;
+
+/** 日报窗口：至少覆盖最近 24 小时 */
+export const DEFAULT_DIGEST_WINDOW_HOURS = 24;
+
+/** 抓取长期失败时的最大回溯天数，避免无限制往前补 */
+export const MAX_FETCH_LOOKBACK_DAYS = 7;
+
 export const SETTINGS_KEY = {
   llm: 'llm',
   smtp: 'smtp',

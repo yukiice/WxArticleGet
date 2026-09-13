@@ -64,19 +64,22 @@ export class ScheduleService implements OnApplicationBootstrap {
   private async registerSchedules(): Promise<void> {
     const queue = this.queue.instance;
     const timeZone = this.config.get<string>('TZ') ?? DEFAULT_TIMEZONE;
-    const fetchCron = this.config.get<string>('FETCH_CRON') ?? '0 7 * * *';
-    const summaryCron = this.config.get<string>('SUMMARY_CRON') ?? '30 7 * * *';
+    const fetchCron = this.config.get<string>('FETCH_CRON') ?? '30 8 * * *';
+    const summaryCron = this.config.get<string>('SUMMARY_CRON') ?? '45 8 * * *';
     const catalogCron = this.config.get<string>('CATALOG_CRON') ?? '0 3 * * *';
     const settings = await this.settings.resolveAll();
     const digestCron = dailyCron(settings.digest.sendTime);
+    // 兜底：正常链路由 fetch-all 在抓取完成后排期，这里只在链路没跑起来时补一次
+    const digestFallbackCron = dailyCron(addMinutes(settings.digest.sendTime, 30));
 
     queue.schedule(JOB.SYNC_CATALOG, catalogCron, {}, { timeZone });
     queue.schedule(JOB.FETCH_ALL, fetchCron, {}, { timeZone });
     queue.schedule(JOB.SUMMARIZE_DAY, summaryCron, {}, { timeZone });
-    queue.schedule(JOB.SEND_DIGEST, digestCron, {}, { timeZone });
+    queue.schedule(JOB.SEND_DIGEST, digestCron, { scheduled: true }, { timeZone });
+    queue.schedule(JOB.SEND_DIGEST, digestFallbackCron, { scheduled: true }, { timeZone });
 
     this.logger.log(
-      `定时计划：目录「${catalogCron}」 抓取「${fetchCron}」 总结「${summaryCron}」 邮件「${digestCron}」（${timeZone}）`,
+      `定时计划：目录「${catalogCron}」 抓取「${fetchCron}」 总结兜底「${summaryCron}」 日报「${digestCron}」 日报兜底「${digestFallbackCron}」（${timeZone}）`,
     );
   }
 
@@ -89,4 +92,15 @@ export class ScheduleService implements OnApplicationBootstrap {
       this.logger.warn(`清理历史任务失败：${error instanceof Error ? error.message : String(error)}`);
     }
   }
+}
+
+/** HH:mm 加 N 分钟，用于计算兜底 cron */
+function addMinutes(time: string, minutes: number): string {
+  const [hour, minute] = time.split(':').map(Number);
+  const total = (hour * 60 + minute + minutes) % (24 * 60);
+  const hh = Math.floor(total / 60)
+    .toString()
+    .padStart(2, '0');
+  const mm = (total % 60).toString().padStart(2, '0');
+  return `${hh}:${mm}`;
 }

@@ -1,7 +1,7 @@
 import { setTimeout as delay } from 'node:timers/promises';
 import { Injectable, Logger } from '@nestjs/common';
 import { Prisma } from '@wx/db';
-import type { JobPayloads, ParsedArticle, RawArticle, ResolvedSettings } from '@wx/shared';
+import { fetchWindowStart, type JobPayloads, type ParsedArticle, type RawArticle, type ResolvedSettings } from '@wx/shared';
 import {
   ArticleUnavailableError,
   countWords,
@@ -58,8 +58,12 @@ export class IngestService {
       data: { type: 'fetch', accountId: account.id, status: 'running', startedAt: new Date() },
     });
 
-    const sinceDays = payload.sinceDays ?? settings.fetch.lookbackDays;
-    const since = new Date(Date.now() - sinceDays * 24 * 60 * 60 * 1000);
+    // 常规窗口 = 最近 24 小时；上次成功抓取更早（失败/停机）则从上次成功时刻开始补，最多回溯 7 天；
+    // 手动触发可显式传 sinceDays 覆盖
+    const since =
+      payload.sinceDays !== undefined
+        ? new Date(Date.now() - payload.sinceDays * 24 * 60 * 60 * 1000)
+        : fetchWindowStart(account.lastSuccessAt, { firstRunDays: settings.fetch.lookbackDays });
 
     try {
       const candidates = await this.collectCandidates(account, payload, since, settings, context);

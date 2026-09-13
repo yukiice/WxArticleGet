@@ -86,7 +86,11 @@ model ArticleImage {
 
 model Summary {
   id           String   @id @default(cuid()) @db.VarChar(32)
+  /// 日报归属日期（发送当天），实际统计区间见 windowFrom / windowTo
   date         DateTime @db.Date
+  /// 统计区间：从「上次成功产出日报的时刻」到「本次抓取开始时刻」，正常情况是 24 小时
+  windowFrom   DateTime? @db.DateTime(3)
+  windowTo     DateTime? @db.DateTime(3)
   scope        String   @default("global") @db.VarChar(32)
   accountId    String?  @db.VarChar(32)
   model        String   @db.VarChar(64)

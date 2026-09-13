@@ -122,7 +122,7 @@ export const testMailSchema = z.object({
 
 export const digestSettingsSchema = z.object({
   enabled: z.boolean().default(true),
-  sendTime: z.string().regex(/^\d{2}:\d{2}$/).default('08:00'),
+  sendTime: z.string().regex(/^\d{2}:\d{2}$/).default('09:00'),
   maxArticles: z.number().int().min(1).max(50).default(20),
   includeDigest: z.boolean().default(true),
 });

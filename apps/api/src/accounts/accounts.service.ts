@@ -150,10 +150,10 @@ export class AccountsService {
 
   async triggerFetch(id: string, sinceDays?: number): Promise<{ queued: boolean }> {
     const account = await this.ensureExists(id);
-    const fetch = await this.settings.resolveFetch();
     await this.queue.enqueue('fetch-account', {
       accountId: account.id,
-      sinceDays: sinceDays ?? fetch.lookbackDays,
+      // 不传 sinceDays 时由 worker 取默认窗口（最近 24 小时 / 上次成功之后）
+      sinceDays,
       manual: true,
     });
     return { queued: true };
