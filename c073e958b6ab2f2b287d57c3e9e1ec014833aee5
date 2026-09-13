@@ -1,0 +1,30 @@
+packages/queue/src/job-queue.ts
+  18b7e31bb981bbf1 251-252,256-260,265,274-278,280,284-288
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.2.8-ntes.9",
+  "base_commit_sha": "c073e958b6ab2f2b287d57c3e9e1ec014833aee5",
+  "prompts": {
+    "18b7e31bb981bbf1": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a08f92-c0f1-7032-a1e1-1ac9c0848c32",
+        "model": "deepseek-v4.1-flash"
+      },
+      "human_author": "yukiice",
+      "messages": [],
+      "total_additions": 19,
+      "total_deletions": 6,
+      "accepted_lines": 19,
+      "overriden_lines": 0,
+      "per_file_stats": {
+        "packages/queue/src/job-queue.ts": {
+          "additions": 19,
+          "deletions": 6,
+          "accepted_lines": 19
+        }
+      }
+    }
+  }
+}
