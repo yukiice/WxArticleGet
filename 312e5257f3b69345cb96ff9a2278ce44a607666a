@@ -1,0 +1,26 @@
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.2.8-ntes.9",
+  "base_commit_sha": "312e5257f3b69345cb96ff9a2278ce44a607666a",
+  "prompts": {
+    "18b7e31bb981bbf1": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a08f92-c0f1-7032-a1e1-1ac9c0848c32",
+        "model": "deepseek-v4.1-flash"
+      },
+      "human_author": "yukiice",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 1,
+      "overriden_lines": 0,
+      "per_file_stats": {
+        "apps/web/tsconfig.tsbuildinfo": {
+          "accepted_lines": 1
+        }
+      }
+    }
+  }
+}
