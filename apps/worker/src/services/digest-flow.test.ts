@@ -80,7 +80,8 @@ describe('日报完整流程', () => {
       await vi.advanceTimersByTimeAsync(30 * 60_000);
       expect(external.send).toHaveBeenCalledOnce();
     } finally { await f.queue.stop(); }
-  });
+    // 假定时器需要推进 31s，而轮询间隔仅 10ms，真实耗时约 7s，高于 vitest 默认的 5s。
+  }, 20_000);
 
   it('此前无文章时允许明确的人工补发，自动任务仍然去重', async () => {
     const f = fixture();

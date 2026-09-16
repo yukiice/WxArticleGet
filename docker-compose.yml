@@ -9,6 +9,8 @@ x-app: &app
   environment: &appEnv
     # 容器内通过服务名访问 MySQL；宿主上的 .env 里是 localhost，这里必须覆盖
     DATABASE_URL: mysql://${MYSQL_USER:-wx}:${MYSQL_PASSWORD:-wx}@mysql:3306/${MYSQL_DATABASE:-wx_article}
+    # 生产镜像 + next start 需要 production，避免 Next.js 非标准 NODE_ENV 警告
+    NODE_ENV: production
 
 services:
   mysql:

@@ -1,12 +1,13 @@
 import { Injectable, Logger, type OnModuleDestroy, type OnModuleInit } from '@nestjs/common';
-import { PrismaClient } from '@wx/db';
+import { attachPrismaErrorFilter, createPrismaOptions, PrismaClient } from '@wx/db';
 
 @Injectable()
 export class PrismaService extends PrismaClient implements OnModuleInit, OnModuleDestroy {
   private readonly logger = new Logger('Prisma');
 
   constructor() {
-    super({ log: process.env.PRISMA_LOG === 'true' ? ['query', 'warn', 'error'] : ['warn', 'error'] });
+    super(createPrismaOptions());
+    attachPrismaErrorFilter(this);
   }
 
   async onModuleInit(): Promise<void> {

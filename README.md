@@ -125,6 +125,7 @@ pnpm poc:article "粘贴一篇公众号文章链接" --download-images
 ## 运维提示
 
 - 图片下载会校验每次重定向的公网 IP，并固定实际连接 IP；仅保存签名及 MIME 符合要求的 PNG / JPEG / GIF / WebP，单张最多 10 MB。失败时保留原始地址，日志中可见；重新执行 `process-article` 任务可重试。
+- **图片全部本地化失败（`图片地址不能指向内网或保留地址`）**：多半是代理软件开了 fake-ip（TUN）模式，把 `mmbiz.qpic.cn` 等域名解析成了保留网段（典型是 `198.18.0.0/15`），被 SSRF 防护拦下。排查：`docker exec <worker容器> getent hosts mmbiz.qpic.cn`，若返回 `198.18.x.x` 即命中。修复：在代理里把 `qpic.cn` / `weixin.qq.com` 加入 fake-ip 白名单（fake-ip-filter），或改用 redir-host 模式后重启代理与容器。正文抓取不受影响，因为它不走这层公网 IP 校验。
 - 数据库备份：`docker compose exec mysql mysqldump -uwx -pwx --single-transaction --default-character-set=utf8mb4 wx_article | gzip > backup.sql.gz`
 - 图片文件位于 `appdata` 卷，需一并备份。
 

@@ -17,6 +17,15 @@ import { Public } from './public.decorator';
 
 const THIRTY_DAYS_MS = 30 * 24 * 60 * 60 * 1000;
 
+/** Cookie 是否加 Secure：由对外地址是否 HTTPS 决定，不依赖 NODE_ENV。 */
+function isHttps(baseUrl: string | undefined): boolean {
+  try {
+    return new URL(baseUrl ?? '').protocol === 'https:';
+  } catch {
+    return false;
+  }
+}
+
 @Controller('auth')
 export class AuthController {
   constructor(
@@ -36,7 +45,7 @@ export class AuthController {
     response.cookie(AUTH_COOKIE, token, {
       httpOnly: true,
       sameSite: 'lax',
-      secure: this.config.get<string>('NODE_ENV') === 'production',
+      secure: isHttps(this.config.get<string>('APP_BASE_URL')),
       maxAge: THIRTY_DAYS_MS,
       path: '/',
     });
