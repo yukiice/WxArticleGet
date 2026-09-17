@@ -7,6 +7,9 @@ import { SettingsService } from '../settings/settings.service';
 @Injectable()
 export class NotifyService {
   private readonly logger = new Logger('Notify');
+  /** 同一告警主题在窗口内只发一次，避免队列重试时重复打扰（如抓取连续重试失败）。 */
+  private readonly recentAlerts = new Map<string, number>();
+  private static readonly ALERT_DEDUPE_MS = 2 * 60 * 60 * 1000;
 
   constructor(
     private readonly prisma: PrismaService,
@@ -17,6 +20,19 @@ export class NotifyService {
   /** 告警发送失败不应影响主流程，因此只记录日志 */
   async alert(subject: string, message: string): Promise<void> {
     try {
+      const now = Date.now();
+      const lastSent = this.recentAlerts.get(subject) ?? 0;
+      if (now - lastSent < NotifyService.ALERT_DEDUPE_MS) {
+        this.logger.log(`告警窗口内重复，跳过发送：${subject}`);
+        return;
+      }
+      this.recentAlerts.set(subject, now);
+      if (this.recentAlerts.size > 500) {
+        for (const [key, sentAt] of this.recentAlerts) {
+          if (now - sentAt >= NotifyService.ALERT_DEDUPE_MS) this.recentAlerts.delete(key);
+        }
+      }
+
       const smtp = (await this.settings.resolveAll()).smtp;
       if (!smtp.user || !smtp.pass) {
         this.logger.warn(`未配置 SMTP，跳过告警：${subject}`);
