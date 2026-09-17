@@ -54,7 +54,7 @@ export class SummaryService {
   ) {}
 
   /** 所有入口优先复用已保存的统计窗口，并等待该批抓取重试完成。 */
-  async run(payload: JobPayloads['summarize-day']): Promise<SummaryRunResult> {
+  async run(payload: JobPayloads['summarize-day'], signal?: AbortSignal): Promise<SummaryRunResult> {
     const target = payload.date ?? dateKey();
     const dateOnly = new Date(`${target}T00:00:00.000Z`);
     await waitForFetch(this.prisma, dateOnly);
@@ -97,10 +97,10 @@ export class SummaryService {
         windowFrom: from,
         windowTo: to,
         model: settings.llm.model,
-        contentMd: message,
-        articleCount: articles.length,
-        tokenIn: 0,
-        tokenOut: 0,
+        contentMd: existing?.contentMd || message,
+        articleCount: existing?.articleCount ?? articles.length,
+        tokenIn: existing?.tokenIn ?? 0,
+        tokenOut: existing?.tokenOut ?? 0,
         status: 'failed',
       });
       await this.notify.alert('AI 总结失败', message);
@@ -110,17 +110,21 @@ export class SummaryService {
     const client = new OpenAI({ apiKey: settings.llm.apiKey, baseURL: settings.llm.baseUrl });
 
     try {
-      const completion = await client.chat.completions.create({
-        model: settings.llm.model,
-        temperature: settings.llm.temperature,
-        messages: [
-          { role: 'system', content: SYSTEM_PROMPT },
-          {
-            role: 'user',
-            content: buildUserPrompt(range, articles, settings.llm.maxInputCharsPerArticle),
-          },
-        ],
-      });
+      const completion = await client.chat.completions.create(
+        {
+          model: settings.llm.model,
+          temperature: settings.llm.temperature,
+          messages: [
+            { role: 'system', content: SYSTEM_PROMPT },
+            {
+              role: 'user',
+              content: buildUserPrompt(range, articles, settings.llm.maxInputCharsPerArticle),
+            },
+          ],
+        },
+        // 取消信号走 RequestOptions，任务超时或进程停止时中断 LLM 请求
+        { signal },
+      );
 
       const content = completion.choices[0]?.message?.content?.trim();
       if (!content) throw new Error('模型返回了空内容');
@@ -146,9 +150,9 @@ export class SummaryService {
         windowTo: to,
         model: settings.llm.model,
         contentMd: existing?.contentMd ?? '',
-        articleCount: articles.length,
-        tokenIn: 0,
-        tokenOut: 0,
+        articleCount: existing?.articleCount ?? articles.length,
+        tokenIn: existing?.tokenIn ?? 0,
+        tokenOut: existing?.tokenOut ?? 0,
         status: 'failed',
       });
       await this.notify.alert(`AI 总结失败（${target}）`, `原因：${message}`);

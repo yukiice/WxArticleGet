@@ -83,6 +83,18 @@ describe('日报完整流程', () => {
     // 假定时器需要推进 31s，而轮询间隔仅 10ms，真实耗时约 7s，高于 vitest 默认的 5s。
   }, 20_000);
 
+  it('总结失败时保留上一次成功的内容和 token 统计', async () => {
+    const f = fixture();
+    f.addArticle();
+    await f.summary.run({});
+    Object.assign(f.summaryRow(), { tokenIn: 234, tokenOut: 567 });
+    const snapshot = { ...f.summaryRow() };
+    external.complete.mockRejectedValueOnce(new Error('模型超时'));
+    // 失败重试不应把之前成功的统计清零
+    await expect(f.summary.run({ force: true } as never)).rejects.toThrow('模型超时');
+    expect(f.summaryRow()).toMatchObject({ status: 'failed', articleCount: snapshot.articleCount, tokenIn: 234, tokenOut: 567, contentMd: snapshot.contentMd });
+  });
+
   it('此前无文章时允许明确的人工补发，自动任务仍然去重', async () => {
     const f = fixture();
     await f.db.summary.create({ data: { date: new Date('2026-09-13T00:00:00Z'), scope: 'global', status: 'empty', windowFrom: new Date('2026-09-12T00:30:00Z'), windowTo: new Date('2026-09-13T00:30:00Z') } });
