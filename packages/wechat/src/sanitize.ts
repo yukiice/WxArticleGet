@@ -68,37 +68,44 @@ const ALLOWED_ATTR = [
   'width',
 ];
 
+// 样式值按语义归类：颜色（hex / rgb / hsl / 关键字）、长度（数值+单位 / 0 / auto）、
+// 单值关键字的固定枚举。不再用 "任意字符串" 正则，避免 style 被用来藏 href 一样的攻击面。
+const CSS_COLOR = /^(?:[-a-z]+|#[0-9a-fA-F]{3,8}|rgba?\([\d\s,.%]+\)$|hsla?\((?:[\d\s,.%]|deg)+\))$/i;
+const CSS_LENGTH = /^(?:0|auto|normal|(?:\d+(?:\.\d+)?(?:px|%|em|rem|pt|vh|vw|ex|ch)?)\s*)+(?:,[-\w'" ]+)?$/;
+const CSS_KEYWORD_ONLY = /^[a-z-]+$/;
+const CSS_BORDER = /^(?:(?:\d+(?:\.\d+)?(?:px|pt|em|rem|%)?|none|hidden|dashed|dotted|double|groove|inset|outset|ridge|solid|transparent|[-a-z]+|#[0-9a-fA-F]{3,8}|rgba?\([\d\s,.%]+\)|hsla?\((?:[\d\s,.%]|deg)+\))(?:\s+|$))+$/i;
+
 const ALLOWED_STYLES: sanitizeHtml.IOptions['allowedStyles'] = {
   '*': {
-    'background-color': [/^.*$/],
-    'border': [/^.*$/],
-    'border-radius': [/^.*$/],
-    'color': [/^.*$/],
-    'font-family': [/^.*$/],
-    'font-size': [/^.*$/],
-    'font-style': [/^.*$/],
-    'font-weight': [/^.*$/],
-    'height': [/^.*$/],
-    'letter-spacing': [/^.*$/],
-    'line-height': [/^.*$/],
-    'margin': [/^.*$/],
-    'margin-bottom': [/^.*$/],
-    'margin-left': [/^.*$/],
-    'margin-right': [/^.*$/],
-    'margin-top': [/^.*$/],
-    'max-width': [/^.*$/],
-    'padding': [/^.*$/],
-    'padding-bottom': [/^.*$/],
-    'padding-left': [/^.*$/],
-    'padding-right': [/^.*$/],
-    'padding-top': [/^.*$/],
-    'text-align': [/^.*$/],
-    'text-decoration': [/^.*$/],
-    'text-indent': [/^.*$/],
-    'vertical-align': [/^.*$/],
-    'white-space': [/^.*$/],
-    'width': [/^.*$/],
-    'word-break': [/^.*$/],
+    'background-color': [CSS_COLOR],
+    'border': [CSS_BORDER],
+    'border-radius': [CSS_LENGTH],
+    'color': [CSS_COLOR],
+    'font-family': [/^[^();<>{}]+$/],
+    'font-size': [CSS_LENGTH],
+    'font-style': [CSS_KEYWORD_ONLY],
+    'font-weight': [/^(?:[1-9]00|bold|normal|lighter|bolder)$/],
+    'height': [CSS_LENGTH],
+    'letter-spacing': [/^(?:0|normal|(?:\d+(?:\.\d+)?(?:px|%|em|rem|pt)?))$/],
+    'line-height': [/^(?:\d+(?:\.\d+)?(?:px|%|em|rem)?|normal)$/],
+    'margin': [CSS_LENGTH],
+    'margin-bottom': [CSS_LENGTH],
+    'margin-left': [CSS_LENGTH],
+    'margin-right': [CSS_LENGTH],
+    'margin-top': [CSS_LENGTH],
+    'max-width': [/^(?:none|(?:\d+(?:\.\d+)?(?:px|%|em|rem|pt|vh|vw)?))$/],
+    'padding': [CSS_LENGTH],
+    'padding-bottom': [CSS_LENGTH],
+    'padding-left': [CSS_LENGTH],
+    'padding-right': [CSS_LENGTH],
+    'padding-top': [CSS_LENGTH],
+    'text-align': [/^(?:left|right|center|justify|start|end)$/],
+    'text-decoration': [/^(?:none|underline(?:\s+[-\w]+)*|overline(?:\s+[-\w]+)*|line-through(?:\s+[-\w]+)*)$/],
+    'text-indent': [CSS_LENGTH],
+    'vertical-align': [/^(?:top|middle|bottom|baseline|sub|super|text-top|text-bottom|(?:\d+(?:\.\d+)?(?:px|%|em|rem)?)|-?)$/],
+    'white-space': [/^(?:normal|pre|nowrap|pre-wrap|pre-line|break-spaces)$/],
+    'width': [CSS_LENGTH],
+    'word-break': [/^(?:normal|break-all|keep-all|break-word)$/],
   },
 };
 
