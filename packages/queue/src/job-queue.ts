@@ -28,7 +28,7 @@ export interface JobQueueOptions {
   logger?: JobQueueLogger;
 }
 
-export type JobQueueHandler = (payload: unknown) => Promise<void> | void;
+export type JobQueueHandler = (payload: unknown, signal?: AbortSignal) => Promise<void> | void;
 
 /** 等待上游任务不算执行失败，不消耗业务重试次数。 */
 export class JobDeferredError extends Error {
@@ -246,14 +246,15 @@ export class JobQueue {
     const startedAt = Date.now();
     this.activeJobId = job.id;
     this.logger.log(`开始执行任务 ${job.name}（第 ${job.attempts}/${job.maxAttempts} 次）`);
-
+    const controller = new AbortController();
+    const signal = controller.signal;
     try {
       if (!handler) throw new Error(`没有注册任务处理器：${job.name}`);
-      await withTimeout(
-        Promise.resolve(handler(job.payload ?? {})),
-        this.expireMs,
-        `任务执行超过 ${describeDuration(this.expireMs)}未结束`,
-      );
+      await withAbortTimeout(handler(job.payload ?? {}, signal), {
+        controller,
+        expireMs: this.expireMs,
+        message: `任务执行超过 ${describeDuration(this.expireMs)}未结束`,
+      });
       // 用 updateMany：任务在运行期间被清理（prune / 手动删记录）时返回 0，而不是抛错打断轮询
       const finished = await this.prisma.jobQueue.updateMany({
         where: { id: job.id },
@@ -368,15 +369,35 @@ export class JobQueue {
   }
 }
 
-function withTimeout<T>(promise: Promise<T>, ms: number, message: string): Promise<T> {
-  let timer: NodeJS.Timeout | undefined;
-  const timeout = new Promise<never>((_, reject) => {
-    timer = setTimeout(() => reject(new Error(message)), ms);
+interface AbortTimeoutOptions {
+  controller: AbortController;
+  expireMs: number;
+  message: string;
+}
+
+/**
+ * 超时处理：一方面让 race 失败（处理器卡死时任务仍能回收重试），另一方面
+ * abort 已传给处理器的 signal，通知其内部 IO（fetch / OpenAI 等）真正取消，
+ * 避免旧实例在任务被 reap 重跑后继续副作用写入。
+ */
+async function withAbortTimeout<T>(
+  task: Promise<T> | T,
+  { controller, expireMs, message }: AbortTimeoutOptions,
+): Promise<T> {
+  const timer: NodeJS.Timeout = setTimeout(() => {
+    controller.abort(new Error(message));
+  }, expireMs);
+  const aborted = new Promise<never>((_, reject) => {
+    controller.signal.addEventListener('abort', () => {
+      reject(controller.signal.reason ?? new Error(message));
+    }, { once: true });
   });
 
-  return Promise.race([promise, timeout]).finally(() => {
-    if (timer) clearTimeout(timer);
-  }) as Promise<T>;
+  try {
+    return await Promise.race([Promise.resolve(task), aborted]);
+  } finally {
+    clearTimeout(timer);
+  }
 }
 
 function describeDuration(ms: number): string {

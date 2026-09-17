@@ -25,16 +25,16 @@ export class ScheduleService implements OnApplicationBootstrap {
       await this.runner.fetchAll();
     });
 
-    queue.work(JOB.FETCH_ACCOUNT, async (payload) => {
-      await this.runner.fetchAccount(payload as JobPayloads['fetch-account']);
+    queue.work(JOB.FETCH_ACCOUNT, async (payload, signal) => {
+      await this.runner.fetchAccount(payload as JobPayloads['fetch-account'], signal);
     });
 
     queue.work(JOB.PROCESS_ARTICLE, async (payload) => {
       await this.runner.processArticle(payload as JobPayloads['process-article']);
     });
 
-    queue.work(JOB.SUMMARIZE_DAY, async (payload) => {
-      await this.runner.summarizeDay((payload ?? {}) as JobPayloads['summarize-day']);
+    queue.work(JOB.SUMMARIZE_DAY, async (payload, signal) => {
+      await this.runner.summarizeDay((payload ?? {}) as JobPayloads['summarize-day'], signal);
     });
 
     queue.work(JOB.SEND_DIGEST, async (payload) => {

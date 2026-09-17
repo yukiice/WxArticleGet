@@ -39,22 +39,22 @@ export class IngestService {
     private readonly notify: NotifyService,
   ) {}
 
-  buildContext(settings: ResolvedSettings): ProviderContext {
+  buildContext(settings: ResolvedSettings, signal?: AbortSignal): ProviderContext {
     return {
       searchEndpoint: settings.fetch.searchEndpoint,
       rsshubBaseUrl: settings.fetch.rsshubBaseUrl,
       requestDelayMs: settings.fetch.requestDelayMs,
-      fetchOptions: { timeoutMs: 25_000, retries: 2 },
+      fetchOptions: { timeoutMs: 25_000, retries: 2, signal },
     };
   }
 
-  async fetchAccount(payload: JobPayloads['fetch-account']): Promise<FetchAccountResult> {
+  async fetchAccount(payload: JobPayloads['fetch-account'], signal?: AbortSignal): Promise<FetchAccountResult> {
     const startedAt = new Date();
     const account = await this.prisma.account.findUnique({ where: { id: payload.accountId } });
     if (!account) throw new Error(`账号不存在：${payload.accountId}`);
 
     const settings = await this.settings.resolveAll();
-    const context = this.buildContext(settings);
+    const context = this.buildContext(settings, signal);
     const jobLog = await this.prisma.jobLog.create({
       data: { type: 'fetch', accountId: account.id, status: 'running', startedAt: new Date() },
     });
@@ -80,11 +80,13 @@ export class IngestService {
 
       for (const item of candidates) {
         try {
-          const created = await this.ingestOne(account, item, context, settings);
+          const created = await this.ingestOne(account, item, context, settings, signal);
           if (created) newCount += 1;
           else skipped += 1;
         } catch (error) {
           const message = error instanceof Error ? error.message : String(error);
+          // 上游已取消（任务超时/进程停止），不再继续下一篇文章
+          if (signal?.aborted) throw error;
           if (error instanceof ArticleUnavailableError && ['deleted', 'blocked', 'revoked', 'migrated'].includes(error.reason)) {
             skipped += 1;
             this.logger.warn(`文章不可用 ${item.url}: ${message}`);
@@ -176,6 +178,7 @@ export class IngestService {
     raw: RawArticle,
     context: ProviderContext,
     settings: ResolvedSettings,
+    signal?: AbortSignal,
   ): Promise<boolean> {
     const urlHash = hashUrl(raw.url);
     const existing = await this.prisma.article.findUnique({ where: { urlHash }, select: { id: true, processed: true } });
@@ -220,8 +223,8 @@ export class IngestService {
       throw error;
     }
 
-    const localized = await this.localize.localizeImages(articleId, parsed.contentHtml, parsed.images);
-    const coverLocal = parsed.coverUrl ? await this.localize.localizeCover(articleId, parsed.coverUrl) : null;
+    const localized = await this.localize.localizeImages(articleId, parsed.contentHtml, parsed.images, signal);
+    const coverLocal = parsed.coverUrl ? await this.localize.localizeCover(articleId, parsed.coverUrl, signal) : null;
 
     await this.prisma.article.update({
       where: { id: articleId },

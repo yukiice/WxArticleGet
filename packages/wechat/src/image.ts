@@ -64,7 +64,8 @@ async function openPublicImage(url: URL, signal: AbortSignal, options: HttpOptio
 
 async function downloadImage(input: string, options: HttpOptions) {
   let url = new URL(input);
-  const signal = AbortSignal.timeout(options.timeoutMs ?? 30_000);
+  const timeout = AbortSignal.timeout(options.timeoutMs ?? 30_000);
+  const signal = options.signal ? AbortSignal.any([options.signal, timeout]) : timeout;
   for (let redirects = 0; redirects <= MAX_REDIRECTS; redirects++) {
     const response = await openPublicImage(url, signal, options);
     const status = response.statusCode ?? 0;
@@ -100,6 +101,8 @@ export async function fetchImage(url: string, options: HttpOptions = {}) {
     try {
       return await downloadImage(url, options);
     } catch (error) {
+      // 外部信号已取消时立即失败，不再退避重试
+      if (options.signal?.aborted) throw error;
       if (error instanceof UnsafeImageError || attempt >= retries) throw error;
       await delay((options.retryDelayMs ?? 800) * 2 ** attempt);
     }

@@ -12,6 +12,8 @@ export interface HttpOptions {
   retries?: number;
   retryDelayMs?: number;
   userAgent?: string;
+  /** 外部取消信号（如任务超时），与单次请求超时一并生效 */
+  signal?: AbortSignal;
 }
 
 const DEFAULT_TIMEOUT = 20_000;
@@ -35,7 +37,9 @@ async function request(url: string, options: HttpOptions): Promise<Response> {
           ...options.headers,
         },
         redirect: 'follow',
-        signal: AbortSignal.timeout(timeoutMs),
+        signal: options.signal
+          ? AbortSignal.any([AbortSignal.timeout(timeoutMs), options.signal])
+          : AbortSignal.timeout(timeoutMs),
       });
 
       if (!response.ok) {

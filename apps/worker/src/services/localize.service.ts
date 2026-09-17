@@ -21,7 +21,12 @@ export class LocalizeService {
     this.dataDir = resolveDataDir(config.get<string>('DATA_DIR'));
   }
 
-  async localizeImages(articleId: string, contentHtml: string, images: ExtractedImage[]): Promise<LocalizeResult> {
+  async localizeImages(
+    articleId: string,
+    contentHtml: string,
+    images: ExtractedImage[],
+    signal?: AbortSignal,
+  ): Promise<LocalizeResult> {
     let html = contentHtml;
     let succeeded = 0;
     let failed = 0;
@@ -29,7 +34,7 @@ export class LocalizeService {
 
     for (const image of images) {
       try {
-        const publicPath = await this.download(image.originalUrl, path.join('images', articleId));
+        const publicPath = await this.download(image.originalUrl, path.join('images', articleId), signal);
         html = replaceAll(html, image.originalUrl, publicPath);
         files.push({ originalUrl: image.originalUrl, localPath: publicPath });
         succeeded += 1;
@@ -42,20 +47,21 @@ export class LocalizeService {
     return { contentHtml: html, succeeded, failed, files };
   }
 
-  async localizeCover(articleId: string, coverUrl: string): Promise<string | null> {
+  async localizeCover(articleId: string, coverUrl: string, signal?: AbortSignal): Promise<string | null> {
     try {
-      return await this.download(coverUrl, path.join('covers', articleId));
+      return await this.download(coverUrl, path.join('covers', articleId), signal);
     } catch (error) {
       this.logger.warn(`封面本地化失败 ${coverUrl}: ${(error as Error).message}`);
       return null;
     }
   }
 
-  private async download(url: string, relativeDir: string): Promise<string> {
+  private async download(url: string, relativeDir: string, signal?: AbortSignal): Promise<string> {
     const response = await fetchImage(url, {
       headers: { Referer: 'https://mp.weixin.qq.com/' },
       timeoutMs: 30_000,
       retries: 1,
+      signal,
     });
 
     const fileName = `${hashString(url).slice(0, 24)}${response.extension}`;

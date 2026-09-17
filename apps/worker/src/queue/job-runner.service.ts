@@ -112,8 +112,8 @@ export class JobRunnerService {
     }
   }
 
-  async fetchAccount(payload: JobPayloads['fetch-account']): Promise<FetchAccountResult> {
-    const result = await this.ingest.fetchAccount(payload);
+  async fetchAccount(payload: JobPayloads['fetch-account'], signal?: AbortSignal): Promise<FetchAccountResult> {
+    const result = await this.ingest.fetchAccount(payload, signal);
     this.logger.log(
       `抓取完成 account=${payload.accountId} 新增=${result.newCount} 跳过=${result.skipped} 失败=${result.failed}`,
     );
@@ -124,8 +124,8 @@ export class JobRunnerService {
     return this.ingest.reprocess(payload.articleId);
   }
 
-  async summarizeDay(payload: JobPayloads['summarize-day']): Promise<SummaryRunResult> {
-    const result = await this.summary.run(payload);
+  async summarizeDay(payload: JobPayloads['summarize-day'], signal?: AbortSignal): Promise<SummaryRunResult> {
+    const result = await this.summary.run(payload, signal);
     this.logger.log(
       `总结完成 date=${payload.date ?? 'today'} 篇数=${result.articleCount} 跳过=${result.skipped}`,
     );
