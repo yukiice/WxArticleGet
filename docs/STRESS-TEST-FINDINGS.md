@@ -34,17 +34,32 @@ API 层（`tests/api-stress.sh`，打本地容器）：
 - 20 并发写同一文章无冲突
 - 路径穿越、非图片扩展名、未登录访问、注入样式用户名、错误密码不泄密均正确拒绝
 
-## 三、遗留待办（按优先级）
+## 三、整体测试结果（2026-09-21 全量回归）
 
-1. **`articles` 搜索无索引**：`q` 走 `contains` 扫 `contentText`(LongText)，数据量上来会慢。个人规模暂时够用。
-2. **Dockerfile 无多阶段**：devDependencies（turbo/vitest/tsc）留在最终镜像，可加 `next standalone` 瘦身。
-3. **限流为单实例内存实现**：多副本部署会失效，需换共享存储。
-4. **RSS 源是第三方免费服务**（decemberpei.cyou），挂了会静默无候选，需靠告警邮件发现；建议评估自建 RSSHub。
-5. **`LoginRateLimiter` 的 Map 无上限清理**：不同 IP 失败记录会累积（当前只在成功登录时删单条）。
+| 项目 | 结果 |
+|---|---|
+| `pnpm typecheck` | 13 任务全过 |
+| `pnpm test` | 14 文件 **88 用例全过** |
+| `pnpm build` | 8 任务全过 |
+| API 压测 `tests/api-stress.sh` | **15/15** |
+| 端到端抓取（虎嗅App，曾被空壳页卡死） | 跳过 5 / 失败 0，账号 error → **active**，`lastSuccessAt` 正常推进 |
+| 迁移命令 `docker compose --profile tools run --rm app migrate` | `No pending migrations to apply` |
+| 容器安全 | `read_only` 生效（`docker cp` 被拒，符合预期）、非 root(1001)、`no-new-privileges` |
 
-## 四、复现方式
+## 四、遗留待办（按优先级）
+
+1. ~~`articles` 搜索无索引~~ **不适用**：每天新增个位数文章，全表扫毫秒级。
+2. ~~Dockerfile 多阶段瘦身~~ **已完成**：2.17GB → 1.43GB。
+3. ~~限流 Map 无上限~~ **已完成**：10_000 条上限，超限丢最早键。
+4. **限流为单实例内存实现**：多副本部署会失效，需换共享存储。单机部署不需要。
+5. **RSS 源是第三方免费服务**（decemberpei.cyou），挂了会静默无候选，需靠告警邮件发现；建议评估自建 RSSHub。
+6. **镜像还能再压到几百 MB**（改用 `pnpm deploy --prod`），但会让容器内 `prisma migrate` 失效，需拆第二个镜像；几个人用的项目不划算，维持现状。
+
+## 五、复现方式
 
 ```bash
-pnpm test                      # 87 个用例
-bash tests/api-stress.sh       # API 并发 + 边界，注意会锁 IP 5 分钟
+pnpm test                              # 88 个用例
+pnpm typecheck && pnpm build
+bash tests/api-stress.sh               # API 并发 + 边界，注意会锁 IP 5 分钟
+docker compose --profile tools run --rm app migrate
 ```
