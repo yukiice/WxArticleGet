@@ -2,7 +2,15 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { IngestService } from './ingest.service';
 
 const source = vi.hoisted(() => ({ fetchArticle: vi.fn(), fetchArticlesForAccount: vi.fn() }));
-vi.mock('@wx/wechat', async (original) => ({ ...await original<object>(), ...source }));
+vi.mock('@wx/wechat', async (original) => {
+  const originalModule = await original<object>();
+  return {
+    ...originalModule,
+    fetchArticle: source.fetchArticle,
+    fetchArticlesForAccount: source.fetchArticlesForAccount,
+    ArticleUnavailableError: originalModule.ArticleUnavailableError,
+  };
+});
 beforeEach(() => vi.resetAllMocks());
 
 describe('抓取失败后的恢复', () => {
@@ -39,5 +47,38 @@ describe('抓取失败后的恢复', () => {
     expect(articles).toHaveLength(2);
     expect(account.lastSuccessAt.getTime()).toBeGreaterThan(oldSuccess.getTime());
     expect(logs[1].status).toBe('success');
+  });
+});
+
+describe('空壳页（no-content）按跳过处理', () => {
+  it('风控空壳不再让任务失败，其余正常入库且窗口推进', async () => {
+    const account: any = { id: 'account', name: '公众号', biz: 'biz', providerType: 'rss', lastSuccessAt: null, status: 'active' };
+    const articles: any[] = [];
+    const logs: any[] = [];
+    const db = {
+      account: { findUnique: async () => ({ ...account }), update: async ({ data }: any) => Object.assign(account, data) },
+      jobLog: { create: async ({ data }: any) => { const row = { id: String(logs.length), ...data }; logs.push(row); return row; }, update: async ({ where, data }: any) => Object.assign(logs[Number(where.id)], data) },
+      article: {
+        findUnique: async ({ where }: any) => articles.find((row) => row.urlHash === where.urlHash),
+        create: async ({ data }: any) => { const row = { id: String(articles.length), ...data }; articles.push(row); return row; },
+        update: async ({ where, data }: any) => Object.assign(articles[Number(where.id)], data),
+      },
+    };
+    source.fetchArticlesForAccount.mockResolvedValue([
+      { title: 'bad', url: 'https://mp.weixin.qq.com/s/shell' },
+      { title: 'good', url: 'https://mp.weixin.qq.com/s/good' },
+    ]);
+    source.fetchArticle.mockImplementation(async (url) => {
+      const { ArticleUnavailableError } = await import('@wx/wechat');
+      if (url.endsWith('shell')) throw new ArticleUnavailableError('未找到正文内容 #js_content', 'no-content');
+      return { parsed: { title: url, contentHtml: '<p>body</p>', contentText: 'body', images: [], wordCount: 1 } };
+    });
+    const service = new IngestService(db as never, { resolveAll: async () => ({ fetch: { requestDelayMs: 0, lookbackDays: 3, dailyLimitPerAccount: 50 } }) } as never,
+      { localizeImages: async () => ({ contentHtml: '<p>body</p>', files: [], failed: 0 }) } as never, { alert: vi.fn() } as never);
+    // 之前这里会以「1 篇文章处理失败」拒绝并重试 3 次失败
+    await expect(service.fetchAccount({ accountId: account.id })).resolves.toMatchObject({ newCount: 1, skipped: 1, failed: 0 });
+    expect(account.status).toBe('active');
+    expect(account.lastSuccessAt).toBeInstanceOf(Date);
+    expect(logs[0]).toMatchObject({ status: 'success', newCount: 1 });
   });
 });

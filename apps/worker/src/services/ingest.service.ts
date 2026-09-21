@@ -87,7 +87,10 @@ export class IngestService {
           const message = error instanceof Error ? error.message : String(error);
           // 上游已取消（任务超时/进程停止），不再继续下一篇文章
           if (signal?.aborted) throw error;
-          if (error instanceof ArticleUnavailableError && ['deleted', 'blocked', 'revoked', 'migrated'].includes(error.reason)) {
+          // deleted/blocked 等是文章终态；no-content 多为微信风控返回的空壳页（正文真实存在），
+          // 反复重拉也拿不到内容，若按失败处理会让整个 fetch 任务重试 3 次后失败，
+          // 连锁阻塞当天总结与日报（线上实证）。归入跳过，正文缺失可后续手动导入补。
+          if (error instanceof ArticleUnavailableError && ['deleted', 'blocked', 'revoked', 'migrated', 'no-content'].includes(error.reason)) {
             skipped += 1;
             this.logger.warn(`文章不可用 ${item.url}: ${message}`);
           } else {
