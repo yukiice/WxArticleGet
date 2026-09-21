@@ -2,7 +2,7 @@
 //
 // 从 PostgreSQL 迁移过来的三个注意点：
 // 1. MySQL 没有 TIMESTAMPTZ，统一用 @db.DateTime(3)。Prisma 读写 MySQL 的 DATETIME 时按 UTC 处理，
-//    因此数据库必须运行在 UTC（docker-compose 里已加 --default-time-zone=+00:00），
+//    因此数据库必须运行在 UTC（请在现有数据库配置 default-time-zone=+00:00），
 //    展示时由应用层用 Intl 转成 Asia/Shanghai。
 // 2. MySQL 的 TEXT 上限 64KB，微信正文实测单篇可到 130KB+，正文类字段一律 @db.LongText。
 // 3. InnoDB 单列索引上限 3072 字节（utf8mb4 即 768 字符），凡参与唯一索引的 URL 都额外存一份
@@ -186,7 +186,7 @@ model FeedCatalogEntry {
   @@map("feed_catalog")
 }
 
-/// 任务队列（替代 pg-boss）：API 侧只写入，worker 侧轮询消费。
+/// 任务队列（替代 pg-boss）：应用进程内入队和消费。
 /// MySQL 里没有现成的 Node 任务队列，用一张表 + 轮询实现，语义对齐原来用到的
 /// pg-boss 能力：延迟执行、失败重试（指数退避）、singletonKey 去重、超时回收。
 model JobQueue {

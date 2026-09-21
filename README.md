@@ -1,97 +1,118 @@
 # 公众号文章聚合阅读器
 
-抓取指定微信公众号每天发布的文章，清洗排版后在网页端阅读，生成每日 AI 总结，并按设定时间把「摘要 + 链接」发送到邮箱。
+抓取微信公众号文章，清洗排版后在网页阅读，生成每日 AI 总结，并把摘要与链接发送到邮箱。
 
-技术栈：Node 24 · TypeScript monorepo（pnpm + Turborepo）· Next.js 15 · NestJS · Prisma · MySQL 8 · DeepSeek · nodemailer（163 SMTP）
+**一个应用容器、一个端口、你现有的 MySQL 数据库。** 网页、API、定时任务在同一个 Node 进程里运行，没有独立 web/api/worker 服务，也不创建数据库容器。任务状态仍保存在 MySQL，失败重试和日报抓取依赖继续保留。
 
-任务队列用 MySQL 的 `job_queue` 表自建（`packages/queue`），不额外引入 Redis，方便在只允许 MySQL 的环境里部署。
+## Ubuntu Docker 部署
 
-## 目录结构
+服务器需要 Git、Docker 和 Compose v2，以及可访问的 MySQL 8.0+ 数据库。应用不会替你创建数据库和数据库用户；先在现有 MySQL 中准备好空库或沿用原库，并授予该库的迁移权限。数据库时区应为 UTC，界面与定时计划默认使用北京时间。
 
+首次部署：
+
+```bash
+git clone https://github.com/yukiice/WxArticleGet.git
+cd WxArticleGet
+cp .env.example .env
+nano .env
+bash deploy.sh
 ```
-apps/web         Next.js：阅读端 + 管理后台（响应式 + PWA）
-apps/api         NestJS：REST API、鉴权、静态图片服务
-apps/worker      NestJS 无 HTTP 进程：定时调度与任务消费
-packages/db      Prisma schema / client / migrations
-packages/shared  zod schema、常量、配置解析（前后端共用）
-packages/wechat  公众号抓取与正文解析（含 POC 脚本）
-packages/email   邮件模板与发送
-docs/            需求评审、技术方案、数据模型
+
+至少设置这几项（示例中的密码都需要替换）：
+
+```dotenv
+DATABASE_URL=mysql://用户名:数据库密码@host.docker.internal:3306/wx_article
+AUTH_SECRET=至少32位随机字符串
+ADMIN_USERNAME=admin
+ADMIN_PASSWORD=你的登录密码
+APP_BASE_URL=http://服务器IP:3000
+PORT=3000
 ```
+
+可用 `openssl rand -hex 32` 生成 `AUTH_SECRET`。数据库密码若含 `@`、`#`、`:` 等特殊字符，需要先做 URL 编码。数据库地址必须能从应用容器访问，不能填 `localhost`：
+
+- 现有数据库容器已向宿主机映射端口：使用 `host.docker.internal:映射端口`，Compose 已配置 Linux 的宿主机网关映射。仅绑定宿主机 `127.0.0.1` 的端口无法经此地址访问，需要调整绑定或使用可达的内网地址。
+- 数据库在别的服务器：使用其内网 IP 和端口。
+
+部署后访问 `http://服务器IP:3000`，在云防火墙/安全组放行应用端口即可。只有 IP 时可正常登录使用；PWA 安装需要以后配置 HTTPS。AI 和邮件参数可在 `.env` 或管理后台填写。
+
+以后每次更新（包括修改 `.env` 后重新部署）：
+
+```bash
+cd /www/WxArticleGet
+bash deploy.sh
+```
+
+脚本会更新**当前分支的上游分支**，默认克隆后就是 `origin/main`，然后构建镜像、执行数据库迁移、更新应用容器并等待健康检查。脚本自身更新后会立即重载。构建和迁移成功前不会停止正在运行的应用；迁移或启动失败会报错，不会宣称更新成功。成功后的数据库迁移不会自动回滚，升级前请按现有方式备份数据库。
+
+网络中断、错误数据库密码或本地代码冲突不能靠脚本保证成功。失败原因会显示在终端，处理后重复执行同一条命令即可。脚本不会强制覆盖本地代码，不会覆盖已有 `.env`，不会删除数据卷。Ubuntu 自带的 `flock` 会阻止同时执行两次部署。
+
+## 国内构建
+
+Dockerfile **不执行 apt-get update/install**。使用已包含 OpenSSL 的 `node:24-bookworm` 完整版基础镜像；首次下载比 slim 大，之后 Docker 复用缓存。
+
+npm/pnpm 默认使用 `registry.npmmirror.com`，Prisma 引擎默认使用 npmmirror 的二进制镜像。依赖下载单独缓存，更新业务代码不会重新下载所有依赖。只导出应用及生产依赖到运行阶段。
+
+这些配置可在 `.env` 覆盖：
+
+```dotenv
+NODE_IMAGE=node:24-bookworm
+NPM_REGISTRY=https://registry.npmmirror.com
+PRISMA_ENGINES_MIRROR=https://cdn.npmmirror.com/binaries/prisma
+```
+
+npm 镜像不负责加速 Docker Hub 或 GitHub。若卡在拉取 Node 镜像，请把 `NODE_IMAGE` 改为你可信的镜像仓库中对应的 Node 24 Debian bookworm 完整版镜像，或使用你服务器已配置的 Docker 镜像加速；若卡在 `git fetch`，需要解决服务器访问 GitHub 的网络。脚本不会替换成来路不明的公共代理。
+
+## 旧版升级
+
+PR 合并后，在现有仓库中先执行一次 `git pull --ff-only` 取得 `deploy.sh`，后续只需 `bash deploy.sh`。
+
+1. 保留原 `.env`，确认 `DATABASE_URL` 指向现有数据库；旧版 `PORT=3001` 应改成 `3000`，并同步 `APP_BASE_URL`。
+2. 执行 `bash deploy.sh`。脚本显式指定 Compose 文件，旧的 `COMPOSE_FILE=docker-compose.server.yml` 和遗留 override 文件不会再影响它。
+3. 构建和迁移完成后，脚本停止同一个 Compose 项目的旧 `web/api/worker` 容器，启动新的 `app`；已有 MySQL 容器和 `appdata` 图片卷保留。沿用原目录及 Compose 项目名，才能找到这些旧容器和数据卷。
+
+`MYSQL_*`、`API_INTERNAL_URL` 不再使用，可从旧 `.env` 删除。不会重置已有用户密码，`ADMIN_PASSWORD` 仅在首次创建管理员时生效。不要执行 `docker compose down -v`，它会删除数据卷。
+
+## 日常操作
+
+```bash
+docker compose -f docker-compose.yml logs -f app
+docker compose -f docker-compose.yml restart app
+docker compose -f docker-compose.yml ps
+```
+
+只有 3000 一个容器端口；以后配置反向代理时，所有路径统一转发到它。默认只运行一个应用实例，进程内的定时计划会随应用启动和关闭。
 
 ## 本地开发
 
-两种方式任选，配置都来自仓库根目录的 `.env`：
-
 ```bash
-cp .env.example .env
-# 至少先改 AUTH_SECRET、ADMIN_PASSWORD；DEEPSEEK_API_KEY / SMTP_* 可以后补
-```
-
-### 方式一：全部跑在 Docker 里（推荐，无需本地装 Node / MySQL）
-
-```bash
-docker compose up -d --build                    # 首次构建镜像需要几分钟
-docker compose run --rm app migrate             # 建表 / 升级表结构（首次和升级后各跑一次）
-docker compose logs -f api                      # 观察启动日志
-```
-
-镜像只有几百 MB（多阶段构建：build 阶段编译，runtime 只留 standalone + dist），
-四个角色（migrate/api/worker/web）共用同一个镜像，迁移是**一次性命令**而不是常驻服务。
-访问 http://localhost:3000 ，用 `.env` 中的 `ADMIN_USERNAME` / `ADMIN_PASSWORD` 登录。
-
-- 改完代码后：`docker compose up -d --build`
-- 升级涉及表结构时：`docker compose run --rm app migrate`
-- 只看某个服务日志：`docker compose logs -f worker`
-- MySQL 通过 `docker-compose.override.yml` 暴露在 `127.0.0.1:3306`，方便用本机客户端直连；生产部署不想暴露端口时用 `docker compose -f docker-compose.yml up -d` 忽略该文件。
-- MySQL 容器固定跑在 UTC（`--default-time-zone=+00:00`）：Prisma 读写 `DATETIME` 一律按 UTC 处理，数据库时区不是 UTC 会导致时间差 8 小时。
-- 应用容器根文件系统只读，只挂载 `/data`（图片与附件）和 `/tmp`；不需要额外权限。
-
-### 方式二：基础设施在 Docker，应用跑在宿主机（改代码热更新更快）
-
-```bash
-docker compose up -d mysql       # 只起数据库
-pnpm install
+corepack enable
+pnpm install --frozen-lockfile
+# 配置仓库根目录 .env，本地开发的 DATABASE_URL 可用本机可访问的数据库地址
 pnpm db:generate
 pnpm db:migrate
-pnpm dev                         # 先编译内部依赖，再启动 web(3000) / api(3001) / worker
+pnpm dev
 ```
 
-访问 http://localhost:3000 ，使用 `.env` 中的 `ADMIN_USERNAME` / `ADMIN_PASSWORD` 登录。
+访问 `http://localhost:3000`。前端支持热更新；服务端修改后重新编译并重启同一个应用进程。
 
-首次启动 API 时会用 `ADMIN_USERNAME` + `ADMIN_PASSWORD` 自动创建账号，之后修改环境变量不会覆盖已有密码。
-
-`DATA_DIR` 的相对路径统一以仓库根目录为基准；默认图片写入根目录 `data/`，API 与 worker 读取同一目录。
-
-## 生产部署
-
-```bash
-cp .env.example .env       # 至少修改数据库密码、AUTH_SECRET、ADMIN_PASSWORD、SMTP_*、APP_BASE_URL
-docker compose -f docker-compose.yml build
-docker compose -f docker-compose.yml up -d mysql      # 先起数据库
-docker compose -f docker-compose.yml run --rm app migrate   # 建表 / 升级表结构
-docker compose -f docker-compose.yml up -d            # 再启动 api / worker / web
+```
+apps/app/src       Next.js 页面、组件、样式
+apps/app/server    API、鉴权、定时调度、抓取与日报服务
+packages/db        Prisma 数据模型和迁移
+packages/queue     MySQL 任务持久化、重试和 cron 调度
+packages/shared    前后端共享类型和配置
+packages/wechat    公众号抓取与正文解析
+packages/email     邮件模板与发送
 ```
 
-服务器上不建议沿用仓库里的 `docker-compose.override.yml`（那是本地开发用的端口映射），显式指定 `-f docker-compose.yml` 即可忽略它。
-
-反向代理建议：`/` 指向 `web:3000`；`/api` 与 `/files` 交给 web 容器即可（Next 已配置 rewrite 转发到 api），也可以直接指向 `api:3001`。
-
-务必启用 HTTPS：PWA「添加到主屏」与 Cookie 安全都依赖它。
-
-### 从旧版本升级
-
-本次包含数据库迁移：会话版本、日报抓取依赖、发送日志统计窗口及队列唯一键。先停止旧 API / worker，再运行 `pnpm db:migrate` 并启动新版本；Docker 部署先停止旧应用服务，再构建新镜像，然后执行 `docker compose run --rm app migrate` 完成迁移，最后 `docker compose up -d` 启动。不要让旧 worker 在迁移过程中继续写队列。
-
-升级后需重新登录；之后修改密码或删除账号会立即使该账号的旧会话失效。迁移会从已有总结回填发送日志的统计窗口，并保留已有队列任务。
-
-宿主机使用相对 `DATA_DIR` 时，请将旧 `apps/worker/data/` 下的 `images/`、`covers/` 合并到仓库根目录 `data/`，或改用指向原目录的绝对路径；Docker 的 `/data` 卷不受影响。静态文件服务只开放图片路径，旧 HTML / SVG 文件不会再对外提供。
+容器的图片目录为 `/data`，挂载原有 `appdata` 卷；本地 `DATA_DIR` 相对仓库根目录解析。Nest 和 Next 共享一个 HTTP 服务，API 和 `/files` 直接处理，其余请求由 Next 渲染，不需要反向代理或进程管理器。
 
 ## 数据源说明
 
 微信没有开放「按名称查询公众号 / 拉取任意公众号历史文章」的接口，因此系统提供四条路径：
 
-1. 内置 RSS 目录（推荐）：worker 每日 03:00 自动同步两份免费公开清单（decemberpei 与 wechat2rss，合计约 700 个公众号）到 `feed_catalog` 表；在「管理 → 公众号」输入名称即可模糊匹配，命中后一键添加（`__biz` 由订阅源自动解析）。可在页面上点「立即同步」手动刷新目录。
+1. 内置 RSS 目录（推荐）：应用每日 03:00 自动同步两份免费公开清单（decemberpei 与 wechat2rss，合计约 700 个公众号）到 `feed_catalog` 表；在「管理 → 公众号」输入名称即可模糊匹配，命中后一键添加（`__biz` 由订阅源自动解析）。可在页面上点「立即同步」手动刷新目录。
 2. 粘贴文章链接绑定（始终可用）：输入框粘贴该号任意一篇文章链接，即可解析 `__biz` 完成绑定；目录未收录时用这条。
 3. RSS / RSSHub 订阅：自建一个公众号转 RSS 的服务，在账号数据源配置里填 `feedUrl`（或 `route` + `baseUrl`），系统按订阅列表自动发现新文章。
 4. 手动导入文章链接：源站失效时在「管理 → 公众号 → 手动导入文章」粘贴链接补录。
@@ -126,13 +147,13 @@ pnpm poc:article "粘贴一篇公众号文章链接" --download-images
 
 后台的「立即生成总结 / 立即发送邮件」优先沿用当日已保存的统计窗口；没有窗口时截止到该日 24:00，起点接之前日报的统计截止点（无记录则回退 24 小时）。「立即发送」支持在成功或无新文章后人工补发。如果抓取已最终失败，先对失败账号「立即抓取」，成功后再重新生成总结并发送。
 
-修改「发送时间」后需要重启 worker 才会重新注册计划：`docker compose restart worker`。
+修改「发送时间」后需要重启应用 才会重新注册计划：`docker compose -f docker-compose.yml restart app`。
 
 ## 运维提示
 
 - 图片下载会校验每次重定向的公网 IP，并固定实际连接 IP；仅保存签名及 MIME 符合要求的 PNG / JPEG / GIF / WebP，单张最多 10 MB。失败时保留原始地址，日志中可见；重新执行 `process-article` 任务可重试。
-- **图片全部本地化失败（`图片地址不能指向内网或保留地址`）**：多半是代理软件开了 fake-ip（TUN）模式，把 `mmbiz.qpic.cn` 等域名解析成了保留网段（典型是 `198.18.0.0/15`），被 SSRF 防护拦下。排查：`docker exec <worker容器> getent hosts mmbiz.qpic.cn`，若返回 `198.18.x.x` 即命中。修复：在代理里把 `qpic.cn` / `weixin.qq.com` 加入 fake-ip 白名单（fake-ip-filter），或改用 redir-host 模式后重启代理与容器。正文抓取不受影响，因为它不走这层公网 IP 校验。
-- 数据库备份：`docker compose exec mysql mysqldump -uwx -pwx --single-transaction --default-character-set=utf8mb4 wx_article | gzip > backup.sql.gz`
+- **图片全部本地化失败（`图片地址不能指向内网或保留地址`）**：多半是代理软件开了 fake-ip（TUN）模式，把 `mmbiz.qpic.cn` 等域名解析成了保留网段（典型是 `198.18.0.0/15`），被 SSRF 防护拦下。排查：`docker exec <app容器> getent hosts mmbiz.qpic.cn`，若返回 `198.18.x.x` 即命中。修复：在代理里把 `qpic.cn` / `weixin.qq.com` 加入 fake-ip 白名单（fake-ip-filter），或改用 redir-host 模式后重启代理与容器。正文抓取不受影响，因为它不走这层公网 IP 校验。
+- 数据库由你自己管理，请用现有数据库的备份方式定期备份。脚本不会创建、停止或删除 MySQL 容器。
 - 图片文件位于 `appdata` 卷，需一并备份。
 
 ## 质量检查

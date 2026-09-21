@@ -1,0 +1,54 @@
+name: Docker smoke test
+on:
+  pull_request:
+  push:
+    branches: [main]
+permissions:
+  contents: read
+jobs:
+  app:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - name: Configure isolated test database
+        run: |
+          docker network create wx-test
+          docker run -d --name wx-test-db --network wx-test \
+            -e MYSQL_ROOT_PASSWORD=test-only -e MYSQL_DATABASE=wx_article \
+            mysql:8.4 --default-time-zone=+00:00
+          for attempt in {1..60}; do
+            if docker exec wx-test-db mysql -uroot -ptest-only -e 'SELECT 1' >/dev/null 2>&1; then exit 0; fi
+            sleep 2
+          done
+          docker logs wx-test-db
+          exit 1
+      - name: Build production image
+        # GitHub 托管 runner 在境外；服务器部署默认仍使用国内源。
+        run: |
+          docker build --build-arg NPM_REGISTRY=https://registry.npmjs.org \
+            --build-arg PRISMA_ENGINES_MIRROR=https://binaries.prisma.sh \
+            -t wx-test-app .
+      - name: Verify startup, migration, pages, login and scheduler
+        run: |
+          docker run -d --name wx-test-app --network wx-test -p 3000:3000 \
+            -e DATABASE_URL=mysql://root:test-only@wx-test-db:3306/wx_article \
+            -e AUTH_SECRET=ci-only-secret-for-isolated-database \
+            -e ADMIN_USERNAME=admin -e ADMIN_PASSWORD=ci-only-password \
+            -e APP_BASE_URL=http://localhost:3000 wx-test-app
+          for attempt in {1..60}; do
+            if curl -fsS http://localhost:3000/api/health >/dev/null; then break; fi
+            sleep 2
+          done
+          curl -fsS http://localhost:3000/api/health
+          curl -fsS http://localhost:3000/login -o /tmp/wx-login.html
+          grep -q '</html>' /tmp/wx-login.html
+          curl -fsS -c /tmp/wx-cookies -H 'Content-Type: application/json' \
+            -d '{"username":"admin","password":"ci-only-password"}' http://localhost:3000/api/auth/login
+          curl -fsS -b /tmp/wx-cookies http://localhost:3000/api/auth/me
+          docker logs wx-test-app > /tmp/wx-app.log 2>&1
+          grep -q '任务处理器与定时计划已就绪' /tmp/wx-app.log
+          docker exec wx-test-app sh -c 'test -w /data'
+      - name: Logs
+        if: always()
+        run: docker logs wx-test-app || true

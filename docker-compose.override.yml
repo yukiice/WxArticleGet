@@ -1,6 +1,0 @@
-# 本地开发覆盖：只把 MySQL 暴露到 127.0.0.1，供宿主机上的 pnpm dev / prisma 命令连接。
-# 生产部署时若不希望暴露，可用 `docker compose -f docker-compose.yml up -d` 忽略本文件。
-services:
-  mysql:
-    ports:
-      - '127.0.0.1:3306:3306'

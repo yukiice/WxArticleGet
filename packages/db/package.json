@@ -14,11 +14,15 @@
   },
   "dependencies": {
     "@wx/shared": "workspace:*",
-    "@prisma/client": "^6.11.1"
+    "@prisma/client": "^6.11.1",
+    "prisma": "^6.11.1"
   },
   "devDependencies": {
     "@types/node": "^22.10.0",
-    "prisma": "^6.11.1",
     "typescript": "^5.6.3"
-  }
+  },
+  "files": [
+    "dist",
+    "prisma"
+  ]
 }

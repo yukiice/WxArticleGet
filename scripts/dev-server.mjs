@@ -25,9 +25,9 @@ process.once('SIGINT', () => stop());
 process.once('SIGTERM', () => stop());
 
 // 等本包首次编译成功后再运行；不依赖各平台对 shell 中 & 的不同解释。
-const compiled = await new Promise((resolve) => run([tsc, '-p', 'tsconfig.json']).once('exit', resolve));
+const compiled = await new Promise((resolve) => run([tsc, '-p', 'tsconfig.server.json']).once('exit', resolve));
 if (compiled !== 0) stop(1);
 if (!stopping) {
-  run([tsc, '-w', '-p', 'tsconfig.json', '--preserveWatchOutput']).once('exit', (code) => stop(code ?? 0));
-  run(['--watch', '--enable-source-maps', 'dist/main.js']).once('exit', (code) => stop(code ?? 0));
+  run([tsc, '-w', '-p', 'tsconfig.server.json', '--preserveWatchOutput']).once('exit', (code) => stop(code ?? 0));
+  run(['--watch', '--enable-source-maps', 'dist/main.js', '--dev']).once('exit', (code) => stop(code ?? 0));
 }

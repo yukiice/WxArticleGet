@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
-import { loginRedirect } from '../apps/web/src/lib/login-redirect';
-import { imageFilesOnly } from '../apps/api/src/files';
+import { loginRedirect } from '../apps/app/src/lib/login-redirect';
+import { imageFilesOnly } from '../apps/app/server/files';
 import { resolveDataDir } from '../packages/shared/src/node';
 import path from 'node:path';
 
@@ -31,7 +31,7 @@ describe('静态文件边界', () => {
   });
 });
 
-it('API 和 worker 的相对存储配置都以仓库根目录解析', () => {
+it('应用的相对存储配置都以仓库根目录解析', () => {
   expect(resolveDataDir('./data')).toBe(path.resolve(__dirname, '../data'));
   expect(resolveDataDir(path.resolve(__dirname, 'absolute-data'))).toBe(path.resolve(__dirname, 'absolute-data'));
 });

@@ -21,7 +21,7 @@ importers:
         specifier: ^3.2.7
         version: 3.2.7(@types/debug@4.1.13)(@types/node@22.20.2)(jiti@2.7.0)(lightningcss@1.32.0)
 
-  apps/api:
+  apps/app:
     dependencies:
       '@nestjs/common':
         specifier: ^11.0.0
@@ -38,6 +38,9 @@ importers:
       '@nestjs/platform-express':
         specifier: ^11.0.0
         version: 11.2.3(@nestjs/common@11.2.3(reflect-metadata@0.2.2)(rxjs@7.8.2))(@nestjs/core@11.2.3)
+      '@tanstack/react-query':
+        specifier: ^5.62.0
+        version: 5.102.8(react@19.3.0)
       '@wx/db':
         specifier: workspace:*
         version: link:../../packages/db
@@ -56,43 +59,15 @@ importers:
       cookie-parser:
         specifier: ^1.4.7
         version: 1.4.7
-      reflect-metadata:
-        specifier: ^0.2.2
-        version: 0.2.2
-      rxjs:
-        specifier: ^7.8.1
-        version: 7.8.2
-      zod:
-        specifier: ^3.25.76
-        version: 3.25.76
-    devDependencies:
-      '@types/cookie-parser':
-        specifier: ^1.4.8
-        version: 1.4.10(@types/express@5.0.6)
-      '@types/express':
-        specifier: ^5.0.0
-        version: 5.0.6
-      '@types/node':
-        specifier: ^22.10.0
-        version: 22.20.2
-      typescript:
-        specifier: ^5.6.3
-        version: 5.9.3
-
-  apps/web:
-    dependencies:
-      '@tanstack/react-query':
-        specifier: ^5.62.0
-        version: 5.102.8(react@19.3.0)
-      '@wx/shared':
-        specifier: workspace:*
-        version: link:../../packages/shared
       next:
         specifier: ^15.1.0
         version: 15.5.25(@types/node@22.20.2)(react-dom@19.3.0(react@19.3.0))(react@19.3.0)
       next-themes:
         specifier: ^0.4.4
         version: 0.4.6(react-dom@19.3.0(react@19.3.0))(react@19.3.0)
+      openai:
+        specifier: ^4.104.0
+        version: 4.104.0(zod@3.25.76)
       react:
         specifier: ^19.0.0
         version: 19.3.0
@@ -102,9 +77,15 @@ importers:
       react-markdown:
         specifier: ^9.0.1
         version: 9.1.0(@types/react@19.3.0)(react@19.3.0)
+      reflect-metadata:
+        specifier: ^0.2.2
+        version: 0.2.2
       remark-gfm:
         specifier: ^4.0.0
         version: 4.0.1
+      rxjs:
+        specifier: ^7.8.1
+        version: 7.8.2
       zod:
         specifier: ^3.25.76
         version: 3.25.76
@@ -112,6 +93,12 @@ importers:
       '@tailwindcss/postcss':
         specifier: ^4.0.0
         version: 4.3.3
+      '@types/cookie-parser':
+        specifier: ^1.4.8
+        version: 1.4.10(@types/express@5.0.6)
+      '@types/express':
+        specifier: ^5.0.0
+        version: 5.0.6
       '@types/node':
         specifier: ^22.10.0
         version: 22.20.2
@@ -128,52 +115,6 @@ importers:
         specifier: ^5.6.3
         version: 5.9.3
 
-  apps/worker:
-    dependencies:
-      '@nestjs/common':
-        specifier: ^11.0.0
-        version: 11.2.3(reflect-metadata@0.2.2)(rxjs@7.8.2)
-      '@nestjs/config':
-        specifier: ^4.0.0
-        version: 4.0.4(@nestjs/common@11.2.3(reflect-metadata@0.2.2)(rxjs@7.8.2))(rxjs@7.8.2)
-      '@nestjs/core':
-        specifier: ^11.0.0
-        version: 11.2.3(@nestjs/common@11.2.3(reflect-metadata@0.2.2)(rxjs@7.8.2))(@nestjs/platform-express@11.2.3)(reflect-metadata@0.2.2)(rxjs@7.8.2)
-      '@wx/db':
-        specifier: workspace:*
-        version: link:../../packages/db
-      '@wx/email':
-        specifier: workspace:*
-        version: link:../../packages/email
-      '@wx/queue':
-        specifier: workspace:*
-        version: link:../../packages/queue
-      '@wx/shared':
-        specifier: workspace:*
-        version: link:../../packages/shared
-      '@wx/wechat':
-        specifier: workspace:*
-        version: link:../../packages/wechat
-      openai:
-        specifier: ^4.104.0
-        version: 4.104.0(zod@3.25.76)
-      reflect-metadata:
-        specifier: ^0.2.2
-        version: 0.2.2
-      rxjs:
-        specifier: ^7.8.1
-        version: 7.8.2
-      zod:
-        specifier: ^3.25.76
-        version: 3.25.76
-    devDependencies:
-      '@types/node':
-        specifier: ^22.10.0
-        version: 22.20.2
-      typescript:
-        specifier: ^5.6.3
-        version: 5.9.3
-
   packages/db:
     dependencies:
       '@prisma/client':
@@ -182,13 +123,13 @@ importers:
       '@wx/shared':
         specifier: workspace:*
         version: link:../shared
+      prisma:
+        specifier: ^6.11.1
+        version: 6.19.3(typescript@5.9.3)
     devDependencies:
       '@types/node':
         specifier: ^22.10.0
         version: 22.20.2
-      prisma:
-        specifier: ^6.11.1
-        version: 6.19.3(typescript@5.9.3)
       typescript:
         specifier: ^5.6.3
         version: 5.9.3
