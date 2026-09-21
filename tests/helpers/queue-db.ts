@@ -39,6 +39,17 @@ export function queueDatabase() {
       }
       return { count: found.length };
     },
+    deleteMany: async ({ where }: any) => {
+      const keep: JobQueue[] = [];
+      let removed = 0;
+      for (const row of rows) {
+        if (matches(row, where)) removed += 1;
+        else keep.push(row);
+      }
+      rows.length = 0;
+      rows.push(...keep);
+      return { count: removed };
+    },
   };
   return { rows, db: { jobQueue: table } as unknown as Pick<PrismaClient, 'jobQueue'> };
 }
