@@ -1,101 +1,38 @@
-x-app: &app
-  # 四个角色（migrate/api/worker/web）共用同一个镜像，避免 migrate 用旧镜像导致迁移不生效
-  image: wxarticleget-app:latest
-  build:
-    context: .
-  env_file:
-    - .env
-  restart: unless-stopped
-  # 根文件系统只读，可写路径只用 volume / tmpfs；几个人用的自部署项目足够安全
-  read_only: true
-  tmpfs:
-    - /tmp:size=64m,mode=1777
-  security_opt:
-    - no-new-privileges:true
-  environment: &appEnv
-    # 容器内通过服务名访问 MySQL；宿主上的 .env 里是 localhost，这里必须覆盖
-    DATABASE_URL: mysql://${MYSQL_USER:-wx}:${MYSQL_PASSWORD:-wx}@mysql:3306/${MYSQL_DATABASE:-wx_article}
-    # 生产镜像 + next start 需要 production，避免 Next.js 非标准 NODE_ENV 警告
-    NODE_ENV: production
-    DATA_DIR: /data
-  logging:
-    driver: json-file
-    options:
-      max-size: "10m"
-      max-file: "3"
-
 services:
-  mysql:
-    image: mysql:8.4
-    restart: unless-stopped
-    # Prisma 读写 MySQL 的 DATETIME 时一律按 UTC 处理，数据库也必须是 UTC，
-    # 否则 DEFAULT CURRENT_TIMESTAMP 会写成东八区时间，和 Prisma 写入的时间差 8 小时。
-    command:
-      - --default-time-zone=+00:00
-      - --character-set-server=utf8mb4
-      - --collation-server=utf8mb4_unicode_ci
+  app:
+    image: wxarticleget-app:latest
+    build:
+      context: .
+      args:
+        NODE_IMAGE: ${NODE_IMAGE:-node:24-bookworm}
+        NPM_REGISTRY: ${NPM_REGISTRY:-https://registry.npmmirror.com}
+        PRISMA_ENGINES_MIRROR: ${PRISMA_ENGINES_MIRROR:-https://cdn.npmmirror.com/binaries/prisma}
+    env_file: .env
     environment:
-      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-wx-root}
-      MYSQL_DATABASE: ${MYSQL_DATABASE:-wx_article}
-      MYSQL_USER: ${MYSQL_USER:-wx}
-      MYSQL_PASSWORD: ${MYSQL_PASSWORD:-wx}
-      TZ: UTC
+      NODE_ENV: production
+      PORT: 3000
+      DATA_DIR: /data
+    # DATABASE_URL 原样读取 .env；此域名可访问宿主机已映射的数据库端口。
+    extra_hosts:
+      - host.docker.internal:host-gateway
+    ports:
+      - '${PORT:-3000}:3000'
     volumes:
-      - mysqldata:/var/lib/mysql
+      - appdata:/data
+    restart: unless-stopped
+    init: true
+    stop_grace_period: 60s
     healthcheck:
-      test: ['CMD-SHELL', 'mysqladmin ping -h 127.0.0.1 -u root -p$$MYSQL_ROOT_PASSWORD --silent']
-      interval: 5s
+      test: ['CMD', 'node', '-e', 'fetch("http://127.0.0.1:3000/api/health").then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))']
+      interval: 10s
       timeout: 5s
-      retries: 20
+      retries: 6
       start_period: 30s
     logging:
       driver: json-file
       options:
-        max-size: "10m"
-        max-file: "3"
-
-  # 迁移不再作为常驻 service：首次部署或升级后手工执行一次
-  #   docker compose --profile tools run --rm app migrate
-  # api / worker 启动时会自动补建管理员账号，不需要等 migrate 完成。
-  # 仅作为迁移的调用靶子，不随 up -d 启动
-  app:
-    <<: *app
-    command: ['migrate']
-    profiles: ['tools']
-    restart: 'no'
-    volumes:
-      - appdata:/data
-
-  api:
-    <<: *app
-    command: ['api']
-    environment:
-      <<: *appEnv
-      PORT: 3001
-    volumes:
-      - appdata:/data
-    ports:
-      - '3001:3001'
-
-  worker:
-    <<: *app
-    command: ['worker']
-    volumes:
-      - appdata:/data
-
-  web:
-    <<: *app
-    command: ['web']
-    environment:
-      <<: *appEnv
-      # .env 里的 PORT=3001 是给 API 的，经 env_file 注入到所有服务，
-      # 这里必须显式覆盖，否则 standalone 的 server.js 会抢 3001
-      PORT: 3000
-      # 前端在容器网络内访问 API，如需其他地址可覆盖
-      API_INTERNAL_URL: http://api:3001
-    ports:
-      - '3000:3000'
+        max-size: '10m'
+        max-file: '3'
 
 volumes:
-  mysqldata:
   appdata:

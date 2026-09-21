@@ -1,0 +1,52 @@
+{
+  "name": "@wx/app",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "node ../../scripts/dev-server.mjs",
+    "build": "next build && tsc -p tsconfig.server.json",
+    "start": "node dist/main.js",
+    "typecheck": "tsc --noEmit && tsc -p tsconfig.server.json --noEmit"
+  },
+  "dependencies": {
+    "@tanstack/react-query": "^5.62.0",
+    "@wx/shared": "workspace:*",
+    "next": "^15.1.0",
+    "next-themes": "^0.4.4",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
+    "react-markdown": "^9.0.1",
+    "remark-gfm": "^4.0.0",
+    "zod": "^3.25.76",
+    "@nestjs/common": "^11.0.0",
+    "@nestjs/config": "^4.0.0",
+    "@nestjs/core": "^11.0.0",
+    "@nestjs/jwt": "^11.0.0",
+    "@nestjs/platform-express": "^11.0.0",
+    "@wx/db": "workspace:*",
+    "@wx/email": "workspace:*",
+    "@wx/queue": "workspace:*",
+    "@wx/wechat": "workspace:*",
+    "cookie-parser": "^1.4.7",
+    "reflect-metadata": "^0.2.2",
+    "rxjs": "^7.8.1",
+    "openai": "^4.104.0"
+  },
+  "devDependencies": {
+    "@tailwindcss/postcss": "^4.0.0",
+    "@types/node": "^22.10.0",
+    "@types/react": "^19.0.0",
+    "@types/react-dom": "^19.0.0",
+    "tailwindcss": "^4.0.0",
+    "typescript": "^5.6.3",
+    "@types/cookie-parser": "^1.4.8",
+    "@types/express": "^5.0.0"
+  },
+  "main": "dist/main.js",
+  "files": [
+    "dist",
+    ".next",
+    "public",
+    "next.config.js"
+  ]
+}

@@ -1,3 +1,5 @@
+> 历史设计/评审记录：文中的独立 web、api、worker 和内置数据库部署已被单应用方案取代；当前部署方式与目录以 [README](../README.md) 为准。
+
 # 技术方案
 
 配套文档：`docs/REVIEW.md`（需求评审）、`docs/DATA_MODEL.md`（数据模型与接口草案）

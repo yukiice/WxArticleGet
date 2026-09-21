@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { SECRET_MASK, SETTINGS_KEY, dailyCron, resolveSettings } from '../packages/shared/src';
-import { SettingsService } from '../apps/api/src/settings/settings.service';
+import { SettingsService } from '../apps/app/server/settings/settings.service';
 
 describe('设置解析（数据库优先，环境变量兜底）', () => {
   it('数据库值优先，环境变量次之，内置默认最后', () => {
@@ -42,6 +42,7 @@ describe('设置更新合并（脱敏值不覆盖真实值，空字符串删除�
     ]);
     const db = {
       setting: {
+        findMany: async () => [...rows].map(([key, value]) => ({ key, value })),
         findUnique: async ({ where }: any) => (rows.has(where.key) ? { key: where.key, value: rows.get(where.key) } : null),
         upsert: async ({ where, update }: any) => {
           rows.set(where.key, update.value);

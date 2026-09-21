@@ -59,13 +59,13 @@ interface ScheduleEntry {
  * 基于 MySQL 的轻量任务队列，用来替代 pg-boss（pg-boss 只能跑在 PostgreSQL 上）。
  *
  * 对齐原来用到的 pg-boss 能力：
- * - app 侧只写库（enqueue），worker 侧轮询消费（work + start）
+ * - 应用进程内入队（enqueue）、轮询消费（work + start）
  * - 失败按 2^n 退避重试，超过 maxAttempts 记为 failed
  * - singletonKey 去重，避免同一任务并发重复
  * - running 超时回收（进程崩溃后任务不会永远卡住）
  * - cron 定时（进程内调度，重启后按最新配置重新注册）
  *
- * 单个 worker 进程消费，任务串行执行；本项目任务量很小（每天个位数），足够用。
+ * 单个应用实例消费，任务串行执行；本项目任务量很小（每天个位数），足够用。
  */
 export class JobQueue {
   private readonly handlers = new Map<string, JobQueueHandler>();
@@ -127,12 +127,12 @@ export class JobQueue {
 
   // ---------------------------------------------------------------- 消费者
 
-  /** 注册任务处理器（worker 侧） */
+  /** 注册任务处理器 */
   work(name: string, handler: JobQueueHandler): void {
     this.handlers.set(name, handler);
   }
 
-  /** 注册 cron 定时任务（worker 侧），时间按 timeZone 计算 */
+  /** 注册 cron 定时任务，时间按 timeZone 计算 */
   schedule(name: string, cron: string, payload: unknown = {}, options: { timeZone?: string } = {}): void {
     const key = `${name}|${cron}|${options.timeZone ?? ''}`;
     this.schedules.set(key, { name, cron, payload, timeZone: options.timeZone });

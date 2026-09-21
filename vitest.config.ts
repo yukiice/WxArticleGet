@@ -2,6 +2,7 @@ import path from 'node:path';
 import { defineConfig } from 'vitest/config';
 
 export default defineConfig({
+  esbuild: { tsconfigRaw: { compilerOptions: { experimentalDecorators: true } } },
   resolve: {
     alias: [
       { find: '@wx/shared/node', replacement: path.resolve(__dirname, 'packages/shared/src/node.ts') },
@@ -10,5 +11,5 @@ export default defineConfig({
       })),
     ],
   },
-  test: { environment: 'node', include: ['tests/**/*.test.ts', 'packages/*/src/**/*.test.ts', 'apps/*/src/**/*.test.ts'] },
+  test: { environment: 'node', include: ['tests/**/*.test.ts', 'packages/*/src/**/*.test.ts', 'apps/app/server/**/*.test.ts'] },
 });

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { LoginRateLimiter } from '../apps/api/src/auth/auth.controller';
+import { LoginRateLimiter } from '../apps/app/server/auth/auth.controller';
 
 describe('登录限流', () => {
   it('连续失败达到上限后拒绝，窗口过期后恢复', () => {

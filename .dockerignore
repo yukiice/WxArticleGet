@@ -1,12 +1,14 @@
-# 构建上下文里排除开发产物，但 dist / .next 由构建阶段自行生成，
-# 运行阶段用 COPY --from=build 取，因此这里排除不会影响运行时（还能加速上下文传输）。
 node_modules
 **/node_modules
+**/dist
+**/.next
+**/.turbo
+**/*.tsbuildinfo
 .git
-.turbo
 data
 docs
 *.log
 .env
-.env.local
+.env.*
+!.env.example
 .DS_Store
