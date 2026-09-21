@@ -29,6 +29,16 @@ describe('登录限流', () => {
     expect(limiter.check('ip-b')).toBe(true);
   });
 
+  it('大量不同 IP 失败后条目数有上限，不会无限增长', () => {
+    const limiter = new LoginRateLimiter();
+    for (let i = 0; i < 10_500; i += 1) {
+      limiter.check(`ip-${i}`);
+      limiter.recordFailure(`ip-${i}`);
+    }
+    // 私有字段仅用于断言，正常路径不依赖它
+    expect((limiter as unknown as { attempts: Map<string, number[]> }).attempts.size).toBeLessThanOrEqual(10_000);
+  });
+
   it('登录成功后清空该 IP 的计数', () => {
     const limiter = new LoginRateLimiter();
     for (let i = 0; i < 4; i += 1) {

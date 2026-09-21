@@ -22,11 +22,14 @@ const RATE_LIMIT_MAX_ATTEMPTS = 5;
 /** 登录失败限流：按 IP 记录最近失败时间，窗口内超过上限则拒绝；成功登录后清空该 IP。 */
 export class LoginRateLimiter {
   private readonly attempts = new Map<string, number[]>();
+  /** 条目数上限，防止被大量不同 IP 的失败请求撑爆内存 */
+  private static readonly MAX_KEYS = 10_000;
 
   check(key: string): boolean {
     const now = Date.now();
     const recent = (this.attempts.get(key) ?? []).filter((time) => now - time < RATE_LIMIT_WINDOW_MS);
     this.attempts.set(key, recent);
+    this.prune();
     return recent.length < RATE_LIMIT_MAX_ATTEMPTS;
   }
 
@@ -34,10 +37,24 @@ export class LoginRateLimiter {
     const recent = this.attempts.get(key) ?? [];
     recent.push(Date.now());
     this.attempts.set(key, recent);
+    this.prune();
   }
 
   reset(key: string): void {
     this.attempts.delete(key);
+  }
+
+  /** 内存有界：条目超限时先丢已过期的空数组，仍超限则丢最早的键（Map 保持插入顺序）。 */
+  private prune(): void {
+    if (this.attempts.size <= LoginRateLimiter.MAX_KEYS) return;
+    for (const [key, times] of this.attempts) {
+      if (times.length === 0) this.attempts.delete(key);
+    }
+    while (this.attempts.size > LoginRateLimiter.MAX_KEYS) {
+      const oldest = this.attempts.keys().next();
+      if (oldest.done) break;
+      this.attempts.delete(oldest.value);
+    }
   }
 }
 
