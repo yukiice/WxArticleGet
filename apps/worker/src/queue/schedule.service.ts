@@ -49,6 +49,11 @@ export class ScheduleService implements OnApplicationBootstrap {
       await this.runner.syncCatalog();
     });
 
+    // 近 24 小时内失败的抓取/总结/日报每小时自动续跑，不再依赖人工点重试
+    queue.work(JOB.RETRY_FAILED, async () => {
+      await this.runner.retryFailed();
+    });
+
     await this.registerSchedules();
     queue.start();
     await this.prune();
@@ -77,9 +82,10 @@ export class ScheduleService implements OnApplicationBootstrap {
     queue.schedule(JOB.SUMMARIZE_DAY, summaryCron, {}, { timeZone });
     queue.schedule(JOB.SEND_DIGEST, digestCron, { scheduled: true }, { timeZone });
     queue.schedule(JOB.SEND_DIGEST, digestFallbackCron, { scheduled: true }, { timeZone });
+    queue.schedule(JOB.RETRY_FAILED, '10 * * * *', {}, { timeZone });
 
     this.logger.log(
-      `定时计划：目录「${catalogCron}」 抓取「${fetchCron}」 总结兜底「${summaryCron}」 日报「${digestCron}」 日报兜底「${digestFallbackCron}」（${timeZone}）`,
+      `定时计划：目录「${catalogCron}」 抓取「${fetchCron}」 总结兜底「${summaryCron}」 日报「${digestCron}」 日报兜底「${digestFallbackCron}」 失败续跑「10 * * * *」（${timeZone}）`,
     );
   }
 

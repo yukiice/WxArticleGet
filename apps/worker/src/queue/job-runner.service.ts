@@ -145,6 +145,36 @@ export class JobRunnerService {
     return this.catalog.sync();
   }
 
+  /**
+   * 每小时回收近 24 小时内失败的链路任务（fetch-account / summarize-day / send-digest）：
+   * - 抓取失败当天往往只是临时网络/风控问题，人工点重试不如每小时自动补抓；
+   * - summarize / send-digest 失败多为「依赖的抓取还没成功」，抓取恢复后同样自动重跑；
+   * - attempts 累计 ≥ 6 的任务视为彻底失败，不再无限重试，防止坏文章死循环。
+   */
+  async retryFailed(): Promise<{ repended: number }> {
+    const since = new Date(Date.now() - 24 * 60 * 60 * 1000);
+    const stale = await this.prisma.jobQueue.findMany({
+      where: {
+        status: 'failed',
+        updatedAt: { gte: since },
+        name: { in: [JOB.FETCH_ACCOUNT, JOB.SUMMARIZE_DAY, JOB.SEND_DIGEST] },
+        attempts: { lt: 6 },
+      },
+      select: { id: true },
+    });
+    if (stale.length === 0) return { repended: 0 };
+
+    for (const job of stale) {
+      // 继续沿用原 payload，attempts 不清零（由认领时递增），做到总尝试次数封顶
+      await this.prisma.jobQueue.updateMany({
+        where: { id: job.id, status: 'failed' },
+        data: { status: 'pending', startedAt: null, finishedAt: null, runAt: new Date() },
+      });
+    }
+    this.logger.log(`自动续跑 ${stale.length} 个失败任务（fetch/总结/日报，24 小时窗口内，累计尝试 ≤ 6 次）`);
+    return { repended: stale.length };
+  }
+
   /** worker 启动时如果目录为空或过期，异步补一次同步 */
   async syncCatalogIfStale(): Promise<boolean> {
     if (!(await this.catalog.needsSync())) return false;

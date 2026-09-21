@@ -18,6 +18,7 @@ export interface JobPayloads {
   };
   'send-alert': { subject: string; message: string };
   'sync-catalog': { source?: string };
+  'retry-failed': Record<string, never>;
 }
 
 export interface UserDto {

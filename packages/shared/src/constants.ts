@@ -6,6 +6,7 @@ export const JOB = {
   SEND_DIGEST: 'send-digest',
   SEND_ALERT: 'send-alert',
   SYNC_CATALOG: 'sync-catalog',
+  RETRY_FAILED: 'retry-failed',
 } as const;
 
 export type JobName = (typeof JOB)[keyof typeof JOB];

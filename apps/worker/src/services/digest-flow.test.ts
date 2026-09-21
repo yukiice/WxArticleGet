@@ -123,3 +123,41 @@ describe('日报完整流程', () => {
     expect(f.rows.filter((row) => row.name === JOB.FETCH_ACCOUNT)).toHaveLength(1);
   });
 });
+
+describe('失败任务自动续跑', () => {
+  function runnerFixture(rows: any[]) {
+    const list = rows;
+    const db = {
+      jobQueue: {
+        findMany: async ({ where }: any) => list.filter((r) => r.status === 'failed'
+          && (where.name as { in: string[] }).in.includes(r.name)
+          && r.attempts < (where.attempts.lt ?? Infinity)
+          && r.updatedAt >= where.updatedAt.gte),
+        updateMany: async ({ where }: any) => list.filter((r) => r.id === where.id && r.status === 'failed').forEach((r) => Object.assign(r, { status: 'pending', startedAt: null, finishedAt: null })),
+      },
+    } as never;
+    const runner = new JobRunnerService(db, {} as never, {} as never, {} as never, {} as never, {} as never, {} as never, {} as never, {} as never);
+    return { runner, list };
+  }
+
+  it('24 小时内失败的 fetch/总结/日报重新入队，attempts≥6 不再续跑', async () => {
+    const rows = [
+      { id: 'a', name: 'fetch-account', status: 'failed', attempts: 3, updatedAt: new Date() },
+      { id: 'b', name: 'send-digest', status: 'failed', attempts: 6, updatedAt: new Date() },
+      { id: 'c', name: 'sync-catalog', status: 'failed', attempts: 1, updatedAt: new Date() },
+      { id: 'd', name: 'fetch-account', status: 'failed', attempts: 1, updatedAt: new Date(Date.now() - 30 * 60 * 60 * 1000) },
+    ];
+    const f = runnerFixture(rows);
+    await expect(f.runner.retryFailed()).resolves.toMatchObject({ repended: 1 });
+    expect(rows.find((row) => row.id === 'a')).toMatchObject({ status: 'pending' });
+    expect(rows.find((row) => row.id === 'b')).toMatchObject({ status: 'failed' }); // 累计尝试 ≥ 6，不再续跑
+    expect(rows.find((row) => row.id === 'c')).toMatchObject({ status: 'failed' }); // 目录同步不在链路里
+    expect(rows.find((row) => row.id === 'd')).toMatchObject({ status: 'failed' }); // 超过 24 小时
+  });
+
+  it('没有失败任务时不动任何记录', async () => {
+    const f = runnerFixture([]);
+    await expect(f.runner.retryFailed()).resolves.toMatchObject({ repended: 0 });
+  });
+});
+
