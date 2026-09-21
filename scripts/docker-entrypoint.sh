@@ -9,9 +9,11 @@ shift || true
 
 case "$ROLE" in
   migrate)
-    # prisma migrate deploy 需要 prisma CLI、schema 与 migrations 目录
+    # prisma migrate deploy 需要 prisma CLI、schema 与 migrations 目录。
+    # runtime 镜像没有 pnpm；prisma 是 @wx/db 的 devDependency，
+    # 装在 packages/db/node_modules 下（pnpm 的隔离布局），直接调它的 CLI 入口。
     cd /app/packages/db
-    exec pnpm exec prisma migrate deploy
+    exec node /app/packages/db/node_modules/prisma/build/index.js migrate deploy
     ;;
   api)
     cd /app/apps/api

@@ -55,11 +55,16 @@ services:
         max-file: "3"
 
   # 迁移不再作为常驻 service：首次部署或升级后手工执行一次
-  #   docker compose run --rm app migrate
+  #   docker compose --profile tools run --rm app migrate
   # api / worker 启动时会自动补建管理员账号，不需要等 migrate 完成。
+  # 仅作为迁移的调用靶子，不随 up -d 启动
   app:
     <<: *app
-    command: ['api']
+    command: ['migrate']
+    profiles: ['tools']
+    restart: 'no'
+    volumes:
+      - appdata:/data
 
   api:
     <<: *app
