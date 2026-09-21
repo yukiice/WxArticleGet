@@ -31,17 +31,21 @@ cp .env.example .env
 ### 方式一：全部跑在 Docker 里（推荐，无需本地装 Node / MySQL）
 
 ```bash
-docker compose up -d --build     # 首次构建镜像需要几分钟
-docker compose logs -f api       # 观察启动日志
+docker compose up -d --build                    # 首次构建镜像需要几分钟
+docker compose run --rm app migrate             # 建表 / 升级表结构（首次和升级后各跑一次）
+docker compose logs -f api                      # 观察启动日志
 ```
 
-`migrate` 服务会自动建表，随后 api(3001) / worker / web(3000) 依次启动。
+镜像只有几百 MB（多阶段构建：build 阶段编译，runtime 只留 standalone + dist），
+四个角色（migrate/api/worker/web）共用同一个镜像，迁移是**一次性命令**而不是常驻服务。
 访问 http://localhost:3000 ，用 `.env` 中的 `ADMIN_USERNAME` / `ADMIN_PASSWORD` 登录。
 
 - 改完代码后：`docker compose up -d --build`
+- 升级涉及表结构时：`docker compose run --rm app migrate`
 - 只看某个服务日志：`docker compose logs -f worker`
 - MySQL 通过 `docker-compose.override.yml` 暴露在 `127.0.0.1:3306`，方便用本机客户端直连；生产部署不想暴露端口时用 `docker compose -f docker-compose.yml up -d` 忽略该文件。
 - MySQL 容器固定跑在 UTC（`--default-time-zone=+00:00`）：Prisma 读写 `DATETIME` 一律按 UTC 处理，数据库时区不是 UTC 会导致时间差 8 小时。
+- 应用容器根文件系统只读，只挂载 `/data`（图片与附件）和 `/tmp`；不需要额外权限。
 
 ### 方式二：基础设施在 Docker，应用跑在宿主机（改代码热更新更快）
 
@@ -64,7 +68,9 @@ pnpm dev                         # 先编译内部依赖，再启动 web(3000) /
 ```bash
 cp .env.example .env       # 至少修改数据库密码、AUTH_SECRET、ADMIN_PASSWORD、SMTP_*、APP_BASE_URL
 docker compose -f docker-compose.yml build
-docker compose -f docker-compose.yml up -d   # 首次会先跑 migrate 服务建表，再启动 api / worker / web
+docker compose -f docker-compose.yml up -d mysql      # 先起数据库
+docker compose -f docker-compose.yml run --rm app migrate   # 建表 / 升级表结构
+docker compose -f docker-compose.yml up -d            # 再启动 api / worker / web
 ```
 
 服务器上不建议沿用仓库里的 `docker-compose.override.yml`（那是本地开发用的端口映射），显式指定 `-f docker-compose.yml` 即可忽略它。
@@ -75,7 +81,7 @@ docker compose -f docker-compose.yml up -d   # 首次会先跑 migrate 服务建
 
 ### 从旧版本升级
 
-本次包含数据库迁移：会话版本、日报抓取依赖、发送日志统计窗口及队列唯一键。先停止旧 API / worker，再运行 `pnpm db:migrate` 并启动新版本；Docker 部署先停止旧应用服务，再构建新镜像并执行 `docker compose up -d`，由 `migrate` 服务执行迁移。不要让旧 worker 在迁移过程中继续写队列。
+本次包含数据库迁移：会话版本、日报抓取依赖、发送日志统计窗口及队列唯一键。先停止旧 API / worker，再运行 `pnpm db:migrate` 并启动新版本；Docker 部署先停止旧应用服务，再构建新镜像，然后执行 `docker compose run --rm app migrate` 完成迁移，最后 `docker compose up -d` 启动。不要让旧 worker 在迁移过程中继续写队列。
 
 升级后需重新登录；之后修改密码或删除账号会立即使该账号的旧会话失效。迁移会从已有总结回填发送日志的统计窗口，并保留已有队列任务。
 

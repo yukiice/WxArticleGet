@@ -1,16 +1,28 @@
 x-app: &app
-  # 四个服务共用同一个镜像，避免 migrate 用旧镜像导致迁移不生效
+  # 四个角色（migrate/api/worker/web）共用同一个镜像，避免 migrate 用旧镜像导致迁移不生效
   image: wxarticleget-app:latest
   build:
     context: .
   env_file:
     - .env
   restart: unless-stopped
+  # 根文件系统只读，可写路径只用 volume / tmpfs；几个人用的自部署项目足够安全
+  read_only: true
+  tmpfs:
+    - /tmp:size=64m,mode=1777
+  security_opt:
+    - no-new-privileges:true
   environment: &appEnv
     # 容器内通过服务名访问 MySQL；宿主上的 .env 里是 localhost，这里必须覆盖
     DATABASE_URL: mysql://${MYSQL_USER:-wx}:${MYSQL_PASSWORD:-wx}@mysql:3306/${MYSQL_DATABASE:-wx_article}
     # 生产镜像 + next start 需要 production，避免 Next.js 非标准 NODE_ENV 警告
     NODE_ENV: production
+    DATA_DIR: /data
+  logging:
+    driver: json-file
+    options:
+      max-size: "10m"
+      max-file: "3"
 
 services:
   mysql:
@@ -36,25 +48,25 @@ services:
       timeout: 5s
       retries: 20
       start_period: 30s
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
 
-  migrate:
+  # 迁移不再作为常驻 service：首次部署或升级后手工执行一次
+  #   docker compose run --rm app migrate
+  # api / worker 启动时会自动补建管理员账号，不需要等 migrate 完成。
+  app:
     <<: *app
-    restart: 'no'
-    command: ['pnpm', '--filter', '@wx/db', 'migrate']
-    depends_on:
-      mysql:
-        condition: service_healthy
+    command: ['api']
 
   api:
     <<: *app
-    command: ['pnpm', '--filter', '@wx/api', 'start']
-    depends_on:
-      migrate:
-        condition: service_completed_successfully
+    command: ['api']
     environment:
       <<: *appEnv
       PORT: 3001
-      DATA_DIR: /data
     volumes:
       - appdata:/data
     ports:
@@ -62,20 +74,19 @@ services:
 
   worker:
     <<: *app
-    command: ['pnpm', '--filter', '@wx/worker', 'start']
-    depends_on:
-      migrate:
-        condition: service_completed_successfully
-    environment:
-      <<: *appEnv
-      DATA_DIR: /data
+    command: ['worker']
     volumes:
       - appdata:/data
 
   web:
     <<: *app
-    command: ['pnpm', '--filter', '@wx/web', 'start']
+    command: ['web']
     environment:
+      <<: *appEnv
+      # .env 里的 PORT=3001 是给 API 的，经 env_file 注入到所有服务，
+      # 这里必须显式覆盖，否则 standalone 的 server.js 会抢 3001
+      PORT: 3000
+      # 前端在容器网络内访问 API，如需其他地址可覆盖
       API_INTERNAL_URL: http://api:3001
     ports:
       - '3000:3000'
