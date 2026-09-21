@@ -10,7 +10,7 @@
   "scripts": {
     "build": "turbo run build",
     "typecheck": "turbo run typecheck",
-    "test": "vitest run",
+    "test": "pnpm db:generate && vitest run",
     "dev": "turbo run dev",
     "db:generate": "pnpm --filter @wx/db generate",
     "db:migrate": "pnpm --filter @wx/db migrate",
