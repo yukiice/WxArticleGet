@@ -2,7 +2,7 @@
 //
 // 从 PostgreSQL 迁移过来的三个注意点：
 // 1. MySQL 没有 TIMESTAMPTZ，统一用 @db.DateTime(3)。Prisma 读写 MySQL 的 DATETIME 时按 UTC 处理，
-//    因此数据库必须运行在 UTC（请在现有数据库配置 default-time-zone=+00:00），
+//    自动时间用 UTC_TIMESTAMP(3)，不依赖 MySQL 全局或会话时区；共享实例可保留 +08:00。
 //    展示时由应用层用 Intl 转成 Asia/Shanghai。
 // 2. MySQL 的 TEXT 上限 64KB，微信正文实测单篇可到 130KB+，正文类字段一律 @db.LongText。
 // 3. InnoDB 单列索引上限 3072 字节（utf8mb4 即 768 字符），凡参与唯一索引的 URL 都额外存一份
@@ -30,7 +30,7 @@ model Account {
   status        String    @default("active") @db.VarChar(16)
   lastFetchAt   DateTime? @db.DateTime(3)
   lastSuccessAt DateTime? @db.DateTime(3)
-  createdAt     DateTime  @default(now()) @db.DateTime(3)
+  createdAt     DateTime  @default(dbgenerated("(utc_timestamp(3))")) @db.DateTime(3)
   updatedAt     DateTime  @updatedAt @db.DateTime(3)
   articles      Article[]
   jobLogs       JobLog[]
@@ -58,7 +58,7 @@ model Article {
   wordCount   Int      @default(0)
   isRead      Boolean  @default(false)
   processed   Boolean  @default(false)
-  createdAt   DateTime @default(now()) @db.DateTime(3)
+  createdAt   DateTime @default(dbgenerated("(utc_timestamp(3))")) @db.DateTime(3)
   updatedAt   DateTime @updatedAt @db.DateTime(3)
   images      ArticleImage[]
 
@@ -78,7 +78,7 @@ model ArticleImage {
   localPath       String   @db.VarChar(512)
   width           Int?
   height          Int?
-  createdAt       DateTime @default(now()) @db.DateTime(3)
+  createdAt       DateTime @default(dbgenerated("(utc_timestamp(3))")) @db.DateTime(3)
 
   @@unique([articleId, originalUrlHash])
   @@map("article_images")
@@ -102,7 +102,7 @@ model Summary {
   tokenIn      Int      @default(0)
   tokenOut     Int      @default(0)
   status       String   @default("done") @db.VarChar(16)
-  createdAt    DateTime @default(now()) @db.DateTime(3)
+  createdAt    DateTime @default(dbgenerated("(utc_timestamp(3))")) @db.DateTime(3)
   updatedAt    DateTime @updatedAt @db.DateTime(3)
 
   @@unique([date, scope, accountId])
@@ -114,7 +114,7 @@ model EmailRecipient {
   email     String   @unique @db.VarChar(191)
   name      String?  @db.VarChar(191)
   enabled   Boolean  @default(true)
-  createdAt DateTime @default(now()) @db.DateTime(3)
+  createdAt DateTime @default(dbgenerated("(utc_timestamp(3))")) @db.DateTime(3)
 
   @@map("email_recipients")
 }
@@ -129,7 +129,7 @@ model SendLog {
   sentAt     DateTime? @db.DateTime(3)
   windowFrom DateTime? @db.DateTime(3)
   windowTo   DateTime? @db.DateTime(3)
-  createdAt  DateTime  @default(now()) @db.DateTime(3)
+  createdAt  DateTime  @default(dbgenerated("(utc_timestamp(3))")) @db.DateTime(3)
 
   @@index([date])
   @@map("send_logs")
@@ -165,7 +165,7 @@ model User {
   passwordHash String   @db.VarChar(255)
   sessionVersion Int    @default(0)
   role         String   @default("member") @db.VarChar(16)
-  createdAt    DateTime @default(now()) @db.DateTime(3)
+  createdAt    DateTime @default(dbgenerated("(utc_timestamp(3))")) @db.DateTime(3)
 
   @@map("users")
 }
@@ -178,8 +178,8 @@ model FeedCatalogEntry {
   biz        String?  @db.VarChar(128)
   avatarUrl  String?  @db.Text
   intro      String?  @db.Text
-  lastSeenAt DateTime @default(now()) @db.DateTime(3)
-  createdAt  DateTime @default(now()) @db.DateTime(3)
+  lastSeenAt DateTime @default(dbgenerated("(utc_timestamp(3))")) @db.DateTime(3)
+  createdAt  DateTime @default(dbgenerated("(utc_timestamp(3))")) @db.DateTime(3)
   updatedAt  DateTime @updatedAt @db.DateTime(3)
 
   @@index([name])
@@ -204,7 +204,7 @@ model JobQueue {
   startedAt    DateTime? @db.DateTime(3)
   finishedAt   DateTime? @db.DateTime(3)
   lastError    String?   @db.Text
-  createdAt    DateTime  @default(now()) @db.DateTime(3)
+  createdAt    DateTime  @default(dbgenerated("(utc_timestamp(3))")) @db.DateTime(3)
   updatedAt    DateTime  @updatedAt @db.DateTime(3)
 
   @@index([status, runAt])

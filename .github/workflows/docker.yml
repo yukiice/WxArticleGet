@@ -16,7 +16,7 @@ jobs:
           docker network create wx-test
           docker run -d --name wx-test-db --network wx-test \
             -e MYSQL_ROOT_PASSWORD=test-only -e MYSQL_DATABASE=wx_article \
-            mysql:8.4 --default-time-zone=+00:00
+            mysql:8.4 --default-time-zone=+08:00
           for attempt in {1..60}; do
             if docker exec wx-test-db mysql -uroot -ptest-only -e 'SELECT 1' >/dev/null 2>&1; then exit 0; fi
             sleep 2
@@ -49,6 +49,10 @@ jobs:
           docker logs wx-test-app > /tmp/wx-app.log 2>&1
           grep -q '任务处理器与定时计划已就绪' /tmp/wx-app.log
           docker exec wx-test-app sh -c 'test -w /data'
+      - name: Verify dates with MySQL global timezone +08:00
+        run: |
+          docker cp tests/mysql-timezone.cjs wx-test-app:/app/mysql-timezone.cjs
+          docker exec wx-test-app node /app/mysql-timezone.cjs
       - name: Logs
         if: always()
         run: docker logs wx-test-app || true

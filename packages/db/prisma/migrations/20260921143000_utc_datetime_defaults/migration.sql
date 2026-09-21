@@ -1,0 +1,29 @@
+-- DATETIME 按 UTC 存储，不依赖共享 MySQL 的全局/会话时区。
+-- 只调整默认表达式，不平移或重写历史时间。
+ALTER TABLE `accounts`
+  ALTER COLUMN `createdAt` SET DEFAULT (UTC_TIMESTAMP(3));
+
+ALTER TABLE `articles`
+  ALTER COLUMN `createdAt` SET DEFAULT (UTC_TIMESTAMP(3));
+
+ALTER TABLE `article_images`
+  ALTER COLUMN `createdAt` SET DEFAULT (UTC_TIMESTAMP(3));
+
+ALTER TABLE `summaries`
+  ALTER COLUMN `createdAt` SET DEFAULT (UTC_TIMESTAMP(3));
+
+ALTER TABLE `email_recipients`
+  ALTER COLUMN `createdAt` SET DEFAULT (UTC_TIMESTAMP(3));
+
+ALTER TABLE `send_logs`
+  ALTER COLUMN `createdAt` SET DEFAULT (UTC_TIMESTAMP(3));
+
+ALTER TABLE `users`
+  ALTER COLUMN `createdAt` SET DEFAULT (UTC_TIMESTAMP(3));
+
+ALTER TABLE `feed_catalog`
+  ALTER COLUMN `lastSeenAt` SET DEFAULT (UTC_TIMESTAMP(3)),
+  ALTER COLUMN `createdAt` SET DEFAULT (UTC_TIMESTAMP(3));
+
+ALTER TABLE `job_queue`
+  ALTER COLUMN `createdAt` SET DEFAULT (UTC_TIMESTAMP(3));
