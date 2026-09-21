@@ -117,7 +117,9 @@ export function sanitizeContentHtml(html: string): string {
     allowedAttributes: { '*': ALLOWED_ATTR },
     allowedStyles: ALLOWED_STYLES,
     allowedSchemes: ['http', 'https', 'data', 'mailto'],
-    allowedSchemesByTag: { img: ['http', 'https', 'data'] },
+    // 只给 a 放行 data: 会被用来构造 XSS（data:text/html,<script>…），
+    // 只有 image/* 的 data: 对正文渲染有意义。
+    allowedSchemesByTag: { a: ['http', 'https', 'mailto'], img: ['http', 'https', 'data'] },
     disallowedTagsMode: 'discard',
     transformTags: {
       img: (tagName, attribs) => {
