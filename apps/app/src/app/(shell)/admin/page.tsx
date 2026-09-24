@@ -146,6 +146,9 @@ function UserListCard() {
   const deleteUser = useDeleteUser();
   const [confirmingId, setConfirmingId] = useState<string | null>(null);
   const [notice, setNotice] = useState<{ tone: 'ok' | 'error'; text: string } | null>(null);
+  const iAmSuper = me?.role === 'super';
+  // 显示层按层级收窄：总管理员看全部；管理员只看成员（自然不含自己、其他管理员与总管理员）
+  const visibleUsers = (users ?? []).filter((user) => iAmSuper || user.role === 'member');
 
   const changeRole = async (id: string, role: 'admin' | 'member') => {
     setNotice(null);
@@ -172,11 +175,13 @@ function UserListCard() {
     <Card className="p-4">
       <div className="text-sm font-medium text-zinc-800 dark:text-zinc-200">账号管理</div>
       <div className="mt-0.5 text-xs text-zinc-500">
-        管理员可调整角色或删除账号；总管理员与当前登录账号不可修改。
+        {iAmSuper
+          ? '可调整角色或删除账号；总管理员与当前登录账号不可修改。'
+          : '这里只显示成员账号；管理员账号与角色调整由总管理员维护。'}
       </div>
 
       <div className="mt-3 divide-y divide-zinc-100 dark:divide-zinc-800">
-        {(users ?? []).map((user) => {
+        {visibleUsers.map((user) => {
           const isSuper = user.role === 'super';
           const isSelf = user.id === me?.sub;
 
@@ -190,15 +195,19 @@ function UserListCard() {
 
               {isSuper ? null : (
                 <div className="flex items-center gap-2">
-                  <Select
-                    className="h-8 w-28 text-[13px]"
-                    value={user.role}
-                    disabled={isSelf || updateUser.isPending}
-                    onChange={(event) => void changeRole(user.id, event.target.value as 'admin' | 'member')}
-                  >
-                    <option value="member">成员（只读）</option>
-                    <option value="admin">管理员</option>
-                  </Select>
+                  {iAmSuper ? (
+                    <div className="w-28 shrink-0">
+                      <Select
+                        size="sm"
+                        value={user.role}
+                        disabled={isSelf || updateUser.isPending}
+                        onChange={(event) => void changeRole(user.id, event.target.value as 'admin' | 'member')}
+                      >
+                        <option value="member">成员（只读）</option>
+                        <option value="admin">管理员</option>
+                      </Select>
+                    </div>
+                  ) : null}
                   {confirmingId === user.id ? (
                     <>
                       <Button
@@ -228,7 +237,9 @@ function UserListCard() {
             </div>
           );
         })}
-        {users && users.length === 0 ? <div className="py-3 text-xs text-zinc-400">暂无账号</div> : null}
+        {users && visibleUsers.length === 0 ? (
+          <div className="py-3 text-xs text-zinc-400">{iAmSuper ? '暂无账号' : '暂无成员账号'}</div>
+        ) : null}
       </div>
 
       {notice ? (
@@ -248,12 +259,20 @@ const ROLE_LABEL: Record<string, string> = {
 
 function CreateUserCard() {
   const { data: users } = useUsers();
+  const { data: me } = useMe();
   const createUser = useCreateUser();
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [role, setRole] = useState<'admin' | 'member'>('member');
   const [notice, setNotice] = useState<{ tone: 'ok' | 'error'; text: string } | null>(null);
+  const iAmSuper = me?.role === 'super';
+  // 与账号管理列表同口径：管理员只展示成员
+  const visibleUsers = (users ?? []).filter((user) => iAmSuper || user.role === 'member');
+  const existingNames = visibleUsers
+    .map((user) => `${user.username}（${ROLE_LABEL[user.role] ?? user.role}）`)
+    .join('、');
+  const existingFallback = iAmSuper ? '暂无账号' : '暂无成员账号';
 
   const submit = async (event: React.FormEvent) => {
     event.preventDefault();
@@ -279,10 +298,7 @@ function CreateUserCard() {
         </span>
       </div>
       <div className="mt-0.5 text-xs text-zinc-500">
-        已有账号：
-        {users?.length
-          ? users.map((user) => `${user.username}（${ROLE_LABEL[user.role] ?? user.role}）`).join('、')
-          : '加载中…'}
+        已有账号：{users ? existingNames || existingFallback : '加载中…'}
       </div>
       <form onSubmit={(event) => void submit(event)} className="mt-4 space-y-3">
         <Field label="用户名">
@@ -307,10 +323,17 @@ function CreateUserCard() {
             required
           />
         </Field>
-        <Field label="角色" hint="管理员可使用管理后台；成员仅能阅读">
+        <Field
+          label="角色"
+          hint={
+            iAmSuper
+              ? '管理员可使用管理后台；成员仅能阅读'
+              : '你添加的账号均为成员（只读），管理员由总管理员创建'
+          }
+        >
           <Select value={role} onChange={(event) => setRole(event.target.value as 'admin' | 'member')}>
             <option value="member">成员（只读）</option>
-            <option value="admin">管理员</option>
+            {iAmSuper ? <option value="admin">管理员</option> : null}
           </Select>
         </Field>
         {notice ? <Notice tone={notice.tone} text={notice.text} /> : null}

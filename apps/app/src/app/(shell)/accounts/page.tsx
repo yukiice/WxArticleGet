@@ -1,13 +1,15 @@
 'use client';
 
 import Link from 'next/link';
-import { PageHeader } from '@/components/nav-shell';
+import { isAdminRole, PageHeader } from '@/components/nav-shell';
 import { Badge, Card, EmptyState, Spinner } from '@/components/ui';
-import { useAccounts } from '@/lib/queries';
+import { useAccounts, useMe } from '@/lib/queries';
 import { relativeTime } from '@/lib/utils';
 
 export default function AccountsPage() {
   const { data: accounts, isLoading } = useAccounts();
+  const { data: me } = useMe();
+  const canManage = isAdminRole(me?.role);
 
   return (
     <div>
@@ -22,14 +24,20 @@ export default function AccountsPage() {
           <Card>
             <EmptyState
               title="还没有添加公众号"
-              description="到「管理 → 公众号」输入名称或粘贴一篇文章链接即可添加。"
+              description={
+                canManage
+                  ? '到「管理 → 公众号」输入名称或粘贴一篇文章链接即可添加。'
+                  : '还没有添加公众号，等管理员添加后这里会自动更新。'
+              }
               action={
-                <Link
-                  href="/admin/accounts"
-                  className="inline-flex h-9 items-center rounded-lg bg-brand-600 px-4 text-sm font-medium text-white"
-                >
-                  去添加
-                </Link>
+                canManage ? (
+                  <Link
+                    href="/admin/accounts"
+                    className="inline-flex h-9 items-center rounded-lg bg-brand-600 px-4 text-sm font-medium text-white"
+                  >
+                    去添加
+                  </Link>
+                ) : undefined
               }
             />
           </Card>
