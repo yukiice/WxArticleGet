@@ -29,5 +29,7 @@ const compiled = await new Promise((resolve) => run([tsc, '-p', 'tsconfig.server
 if (compiled !== 0) stop(1);
 if (!stopping) {
   run([tsc, '-w', '-p', 'tsconfig.server.json', '--preserveWatchOutput']).once('exit', (code) => stop(code ?? 0));
-  run(['--watch', '--enable-source-maps', 'dist/main.js', '--dev']).once('exit', (code) => stop(code ?? 0));
+  // 只监视 dist：应用内嵌了 Next dev，它会持续写入 .next/**，
+  // 若把 .next 纳入监视范围会触发无限重启（每次页面编译都重启进程）。
+  run(['--watch', '--watch-path=dist', '--enable-source-maps', 'dist/main.js', '--dev']).once('exit', (code) => stop(code ?? 0));
 }
