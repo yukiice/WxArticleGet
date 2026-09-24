@@ -76,7 +76,7 @@ export function NavShell({ children }: { children: React.ReactNode }) {
       </aside>
 
       {/* 移动端顶栏 */}
-      <header className="sticky top-0 z-30 flex h-14 items-center justify-between border-b border-zinc-200 bg-white/85 px-4 backdrop-blur lg:hidden dark:border-zinc-800 dark:bg-zinc-900/85">
+      <header className="sticky top-0 z-30 flex h-[calc(3.5rem+env(safe-area-inset-top))] items-center justify-between border-b border-zinc-200 bg-white/85 px-4 pt-[env(safe-area-inset-top)] backdrop-blur lg:hidden dark:border-zinc-800 dark:bg-zinc-900/85">
         <span className="text-[15px] font-bold">公众号阅读器</span>
         <ThemeToggle />
       </header>
@@ -137,7 +137,7 @@ export function AdminTabs() {
 export function PageHeader({ title, subtitle, extra }: { title: string; subtitle?: string; extra?: React.ReactNode }) {
   return (
     <div className="flex items-start justify-between gap-4 px-4 pb-3 pt-5 sm:px-0">
-      <div>
+      <div className="min-w-0">
         <h1 className="text-lg font-bold text-zinc-900 dark:text-zinc-100">{title}</h1>
         {subtitle ? <p className="mt-1 text-xs text-zinc-500">{subtitle}</p> : null}
       </div>

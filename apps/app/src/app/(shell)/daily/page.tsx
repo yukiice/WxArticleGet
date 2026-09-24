@@ -49,7 +49,7 @@ export default function DailyPage() {
           </Card>
         ) : summary && summary.status === 'done' && summary.contentMd ? (
           <Card className="p-5">
-            <div className="mb-3 flex items-center gap-2 text-xs text-zinc-500">
+            <div className="mb-3 flex flex-wrap items-center gap-2 text-xs text-zinc-500">
               <SparkIcon className="size-4 text-brand-500" />
               <span>{summary.model}</span>
               <span aria-hidden>·</span>

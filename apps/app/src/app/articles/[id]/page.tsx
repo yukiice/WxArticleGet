@@ -25,7 +25,7 @@ export default function ArticleDetailPage() {
 
   return (
     <div className="min-h-dvh bg-white dark:bg-zinc-950">
-      <header className="sticky top-0 z-20 flex h-14 items-center justify-between border-b border-zinc-100 bg-white/85 px-3 backdrop-blur dark:border-zinc-800 dark:bg-zinc-950/85">
+      <header className="sticky top-0 z-20 flex h-[calc(3.5rem+env(safe-area-inset-top))] items-center justify-between border-b border-zinc-100 bg-white/85 px-3 pt-[env(safe-area-inset-top)] backdrop-blur dark:border-zinc-800 dark:bg-zinc-950/85">
         <button
           type="button"
           onClick={() => router.back()}
@@ -67,7 +67,8 @@ export default function ArticleDetailPage() {
           </div>
         ) : (
           <>
-            <h1 className="text-xl font-bold leading-snug text-zinc-900 sm:text-2xl dark:text-zinc-50">
+            {/* break-words：标题若含长链接或无空格长串，否则会顶破容器 */}
+            <h1 className="break-words text-xl font-bold leading-snug text-zinc-900 sm:text-2xl dark:text-zinc-50">
               {article.title}
             </h1>
 

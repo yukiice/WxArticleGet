@@ -42,7 +42,7 @@ export default function HomePage() {
       <PageHeader title="阅读" subtitle={`共 ${total} 篇`} />
 
       <div className="space-y-3 px-4 sm:px-0">
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           <div className="flex rounded-lg bg-zinc-100 p-1 dark:bg-zinc-800">
             {(
               [
@@ -70,7 +70,7 @@ export default function HomePage() {
           </div>
 
           <form
-            className="relative flex-1"
+            className="relative min-w-0 flex-1 basis-full sm:basis-auto"
             onSubmit={(event) => {
               event.preventDefault();
               setSearch(keyword.trim());
