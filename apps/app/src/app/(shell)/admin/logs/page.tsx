@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { AdminTabs, PageHeader } from '@/components/nav-shell';
-import { Badge, Button, Card, EmptyState, Spinner } from '@/components/ui';
+import { Badge, Button, Card, EmptyState, Select, Spinner } from '@/components/ui';
 import { useJobLogs, useSendLogs } from '@/lib/queries';
 import { cn, formatDateTime } from '@/lib/utils';
 
@@ -54,33 +54,37 @@ export default function AdminLogsPage() {
 
           {tab === 'jobs' ? (
             <>
-              <select
-                value={type}
-                onChange={(event) => {
-                  setType(event.target.value);
-                  setPage(1);
-                }}
-                className="h-8 rounded-lg border border-zinc-200 bg-white px-2 text-[13px] dark:border-zinc-700 dark:bg-zinc-900"
-              >
-                <option value="">全部类型</option>
-                <option value="fetch">抓取</option>
-                <option value="clean">清洗</option>
-                <option value="summary">总结</option>
-                <option value="email">邮件</option>
-              </select>
-              <select
-                value={status}
-                onChange={(event) => {
-                  setStatus(event.target.value);
-                  setPage(1);
-                }}
-                className="h-8 rounded-lg border border-zinc-200 bg-white px-2 text-[13px] dark:border-zinc-700 dark:bg-zinc-900"
-              >
-                <option value="">全部状态</option>
-                <option value="success">成功</option>
-                <option value="failed">失败</option>
-                <option value="running">进行中</option>
-              </select>
+              <div className="w-28 shrink-0">
+                <Select
+                  size="sm"
+                  value={type}
+                  onChange={(event) => {
+                    setType(event.target.value);
+                    setPage(1);
+                  }}
+                >
+                  <option value="">全部类型</option>
+                  <option value="fetch">抓取</option>
+                  <option value="clean">清洗</option>
+                  <option value="summary">总结</option>
+                  <option value="email">邮件</option>
+                </Select>
+              </div>
+              <div className="w-28 shrink-0">
+                <Select
+                  size="sm"
+                  value={status}
+                  onChange={(event) => {
+                    setStatus(event.target.value);
+                    setPage(1);
+                  }}
+                >
+                  <option value="">全部状态</option>
+                  <option value="success">成功</option>
+                  <option value="failed">失败</option>
+                  <option value="running">进行中</option>
+                </Select>
+              </div>
             </>
           ) : null}
         </div>
@@ -98,25 +102,26 @@ export default function AdminLogsPage() {
                 ? jobs.data?.items.map((log) => (
                     <div key={log.id} className="px-4 py-3">
                       <div className="flex items-center justify-between gap-3">
-                        <div className="flex items-center gap-2">
+                        <div className="flex min-w-0 items-center gap-2">
                           <StatusBadge status={log.status} />
-                          <span className="text-sm font-medium text-zinc-800 dark:text-zinc-200">
+                          <span className="truncate text-sm font-medium text-zinc-800 dark:text-zinc-200">
                             {log.accountName ?? log.type}
                           </span>
                         </div>
-                        <span className="text-xs text-zinc-400">{formatDateTime(log.startedAt)}</span>
+                        <span className="shrink-0 text-xs text-zinc-400">{formatDateTime(log.startedAt)}</span>
                       </div>
                       <div className="mt-1 text-xs text-zinc-500">
                         新增 {log.newCount} 篇
                         {log.finishedAt ? ` · 耗时 ${Math.max(1, Math.round((new Date(log.finishedAt).getTime() - new Date(log.startedAt).getTime()) / 1000))}s` : ''}
                       </div>
-                      {log.error ? <div className="mt-1 text-xs text-red-500">{log.error}</div> : null}
+                      {/* break-words：错误信息常含长 URL 或 #anchor 长串，否则会横向溢出卡片 */}
+                      {log.error ? <div className="mt-1 break-words text-xs text-red-500">{log.error}</div> : null}
                     </div>
                   ))
                 : mails.data?.items.map((log) => (
                     <div key={log.id} className="px-4 py-3">
                       <div className="flex items-center justify-between gap-3">
-                        <div className="flex items-center gap-2">
+                        <div className="flex min-w-0 items-center gap-2">
                           <StatusBadge status={log.status} />
                           <span className="truncate text-sm font-medium text-zinc-800 dark:text-zinc-200">
                             {log.subject}
@@ -125,7 +130,7 @@ export default function AdminLogsPage() {
                         <span className="shrink-0 text-xs text-zinc-400">{formatDateTime(log.createdAt)}</span>
                       </div>
                       <div className="mt-1 truncate text-xs text-zinc-500">收件人：{log.recipients}</div>
-                      {log.error ? <div className="mt-1 text-xs text-red-500">{log.error}</div> : null}
+                      {log.error ? <div className="mt-1 break-words text-xs text-red-500">{log.error}</div> : null}
                     </div>
                   ))}
             </div>

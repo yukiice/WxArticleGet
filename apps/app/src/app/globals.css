@@ -79,8 +79,8 @@ body {
 }
 
 .article-content table {
-  width: 100%;
   display: block;
+  max-width: 100%;
   overflow-x: auto;
   border-collapse: collapse;
 }
@@ -150,4 +150,80 @@ body {
 .markdown-body a {
   color: var(--color-brand-600);
   text-decoration: underline;
+}
+
+/* 日报正文同样需要防溢出与表格/代码块样式，否则模型输出的表格会完全没有边框 */
+.markdown-body {
+  word-break: break-word;
+  overflow-wrap: anywhere;
+}
+
+.markdown-body h1 {
+  font-size: 1.35rem;
+}
+
+.markdown-body strong {
+  font-weight: 600;
+}
+
+.markdown-body table {
+  display: block;
+  max-width: 100%;
+  overflow-x: auto;
+  border-collapse: collapse;
+  margin: 1em 0;
+}
+
+.markdown-body th,
+.markdown-body td {
+  border: 1px solid rgb(228 228 231);
+  padding: 6px 10px;
+}
+
+.dark .markdown-body th,
+.dark .markdown-body td {
+  border-color: rgb(63 63 70);
+}
+
+.markdown-body blockquote {
+  margin: 1.2em 0;
+  padding: 0.4em 1em;
+  border-left: 3px solid var(--color-brand-500);
+  background: rgb(244 244 245);
+  color: rgb(82 82 91);
+}
+
+.dark .markdown-body blockquote {
+  background: rgb(39 39 42);
+  color: rgb(161 161 170);
+}
+
+.markdown-body pre {
+  background: rgb(24 24 27);
+  color: rgb(244 244 245);
+  padding: 12px 14px;
+  border-radius: 8px;
+  overflow-x: auto;
+  font-size: 13px;
+  margin: 1em 0;
+}
+
+.markdown-body code {
+  font-size: 0.92em;
+}
+
+.markdown-body img {
+  max-width: 100%;
+  height: auto;
+  border-radius: 8px;
+}
+
+.markdown-body hr {
+  margin: 1.5em 0;
+  border: 0;
+  border-top: 1px solid rgb(228 228 231);
+}
+
+.dark .markdown-body hr {
+  border-top-color: rgb(63 63 70);
 }

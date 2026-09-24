@@ -12,11 +12,16 @@ export function ArticleCard({ article }: { article: ArticleListItemDto }) {
     >
       <div className="flex gap-4">
         <div className="min-w-0 flex-1">
-          <div className="mb-1.5 flex items-center gap-2 text-xs text-zinc-500">
-            <span className="font-medium text-zinc-600 dark:text-zinc-300">{article.account.name}</span>
-            <span aria-hidden>·</span>
-            <span>{relativeTime(article.publishTime)}</span>
-            {!article.isRead ? <span className="size-1.5 rounded-full bg-brand-600" aria-label="未读" /> : null}
+          <div className="mb-1.5 flex min-w-0 items-center gap-2 text-xs text-zinc-500">
+            {/* 账号名可能很长：截断它，保住右侧的时间与未读标记 */}
+            <span className="truncate font-medium text-zinc-600 dark:text-zinc-300">{article.account.name}</span>
+            <span aria-hidden className="shrink-0">
+              ·
+            </span>
+            <span className="shrink-0">{relativeTime(article.publishTime)}</span>
+            {!article.isRead ? (
+              <span className="size-1.5 shrink-0 rounded-full bg-brand-600" aria-label="未读" />
+            ) : null}
           </div>
 
           <h3 className="mb-1.5 line-clamp-2 text-[15px] font-semibold leading-snug text-zinc-900 group-hover:text-brand-700 dark:text-zinc-100 dark:group-hover:text-brand-500">

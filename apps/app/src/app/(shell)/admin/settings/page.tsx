@@ -173,7 +173,7 @@ export default function AdminSettingsPage() {
             </div>
 
             <div className="grid gap-3 sm:grid-cols-2">
-              <Field label="发送时间" hint="24 小时制，修改后需重启应用 生效">
+              <Field label="发送时间" hint="24 小时制，修改后需重启应用生效">
                 <Input
                   type="time"
                   value={digest.sendTime}
@@ -271,12 +271,13 @@ export default function AdminSettingsPage() {
             {(recipients.data ?? []).map((recipient) => (
               <div
                 key={recipient.id}
-                className="flex items-center justify-between rounded-lg border border-zinc-200 px-3 py-2 text-sm dark:border-zinc-700"
+                className="flex items-center justify-between gap-2 rounded-lg border border-zinc-200 px-3 py-2 text-sm dark:border-zinc-700"
               >
-                <span>{recipient.email}</span>
+                {/* 邮箱最长可到 254 字符：截断它，避免把右侧删除按钮挤出去 */}
+                <span className="min-w-0 truncate">{recipient.email}</span>
                 <button
                   type="button"
-                  className="text-zinc-400 hover:text-red-500"
+                  className="shrink-0 text-zinc-400 hover:text-red-500"
                   onClick={() => void deleteRecipient.mutate(recipient.id)}
                   aria-label="删除收件人"
                 >
