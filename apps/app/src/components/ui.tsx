@@ -20,6 +20,12 @@ const SIZES: Record<Size, string> = {
   md: 'h-10 px-4 text-sm gap-2',
 };
 
+/** 表单控件尺寸：与 Button 分开定义（Button 的 sm 需要左右内边距，输入框需要更窄） */
+const FIELD_SIZES: Record<Size, string> = {
+  sm: 'h-8 px-2 text-[13px]',
+  md: 'h-10 px-3 text-sm',
+};
+
 export function Button({
   variant = 'primary',
   size = 'md',
@@ -33,7 +39,9 @@ export function Button({
       {...props}
       disabled={props.disabled || loading}
       className={cn(
-        'inline-flex items-center justify-center rounded-lg font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-60',
+        // shrink-0 + whitespace-nowrap：按钮常与 w-full 输入框同处一个 flex 行，
+        // 否则按钮会被压到最小宽度，中文标签随即折成竖排两行。
+        'inline-flex shrink-0 items-center justify-center rounded-lg font-medium whitespace-nowrap transition-colors disabled:cursor-not-allowed disabled:opacity-60',
         VARIANTS[variant],
         SIZES[size],
         className,
@@ -58,26 +66,38 @@ export function Card({ className, children }: { className?: string; children: Re
   );
 }
 
-export function Input({ className, ...props }: InputHTMLAttributes<HTMLInputElement>) {
+export function Input({
+  className,
+  size = 'md',
+  ...props
+}: Omit<InputHTMLAttributes<HTMLInputElement>, 'size'> & { size?: Size }) {
   return (
     <input
       {...props}
       className={cn(
-        'h-10 w-full rounded-lg border border-zinc-200 bg-white px-3 text-sm outline-none transition focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20',
+        // min-w-0：输入框默认最小宽度按 size 属性（约 20 字符）计算，窄屏同行布局会溢出
+        'w-full min-w-0 rounded-lg border border-zinc-200 bg-white outline-none transition focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20',
         'placeholder:text-zinc-400 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100',
+        FIELD_SIZES[size],
         className,
       )}
     />
   );
 }
 
-export function Select({ className, children, ...props }: SelectHTMLAttributes<HTMLSelectElement>) {
+export function Select({
+  className,
+  size = 'md',
+  children,
+  ...props
+}: Omit<SelectHTMLAttributes<HTMLSelectElement>, 'size'> & { size?: Size }) {
   return (
     <select
       {...props}
       className={cn(
-        'h-10 w-full rounded-lg border border-zinc-200 bg-white px-3 text-sm outline-none transition focus:border-brand-500',
+        'w-full min-w-0 rounded-lg border border-zinc-200 bg-white outline-none transition focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20',
         'dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100',
+        FIELD_SIZES[size],
         className,
       )}
     >
@@ -104,7 +124,13 @@ export function Badge({
   } as const;
 
   return (
-    <span className={cn('inline-flex items-center rounded-md px-2 py-0.5 text-xs font-medium', tones[tone], className)}>
+    <span
+      className={cn(
+        'inline-flex shrink-0 items-center whitespace-nowrap rounded-md px-2 py-0.5 text-xs font-medium',
+        tones[tone],
+        className,
+      )}
+    >
       {children}
     </span>
   );
@@ -147,11 +173,11 @@ export function Switch({
       role="switch"
       aria-checked={checked}
       onClick={() => onChange(!checked)}
-      className="inline-flex items-center gap-2"
+      className="inline-flex shrink-0 items-center gap-2"
     >
       <span
         className={cn(
-          'relative h-6 w-11 rounded-full transition-colors',
+          'relative h-6 w-11 shrink-0 rounded-full transition-colors',
           checked ? 'bg-brand-600' : 'bg-zinc-300 dark:bg-zinc-700',
         )}
       >
@@ -162,7 +188,9 @@ export function Switch({
           )}
         />
       </span>
-      {label ? <span className="text-sm text-zinc-600 dark:text-zinc-300">{label}</span> : null}
+      {label ? (
+        <span className="whitespace-nowrap text-sm text-zinc-600 dark:text-zinc-300">{label}</span>
+      ) : null}
     </button>
   );
 }
